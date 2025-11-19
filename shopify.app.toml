@@ -19,19 +19,18 @@ api_version = "2025-10"
   topics = [ "app/scopes_update" ]
   uri = "/webhooks/app/scopes_update"
 
+
   [[webhooks.subscriptions]]
-  topics = ["shop/update"]
-  uri = "/webhooks/app/metafields-update"
-  metafield_namespaces = ["optimaio_cart"]
-
-
+  topics = ["markets/create"]
+  uri = "/webhooks/app/markets_info"
 
   [[webhooks.subscriptions]]
   topics = ["markets/update"]
-  uri = "https://remix-app-rqyv.onrender.com/webhooks/app/markets_team"
-  format = "json"
+  uri = "/webhooks/app/markets_info"
 
-
+  [[webhooks.subscriptions]]
+  topics = ["markets/delete"]
+  uri = "/webhooks/app/markets_info"
 
   [app_proxy]
 url = "/optimaio-cart"

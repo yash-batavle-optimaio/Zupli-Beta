@@ -38,13 +38,17 @@ export const loader = async ({ request }) => {
   try {
     parsed = JSON.parse(metafield.value);
   } catch {
-    parsed = { currencies: [{ code: "INR", format: "₹ {{amount}}" }], defaultCurrency: "INR" };
+    parsed = {
+      currencies: [{ code: "INR", format: "₹ {{amount}}" }],
+      defaultCurrency: "INR",
+    };
   }
 
   return json({
     ok: true,
     currencies: parsed.currencies,
     defaultCurrency: parsed.defaultCurrency,
+    showDecimals: parsed.showDecimals || "no",
     updatedAt: metafield.updatedAt,
   });
 };

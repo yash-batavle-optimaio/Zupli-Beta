@@ -27,12 +27,9 @@ import { authenticate } from "../shopify.server";
 import {
   DeleteIcon,
   PlusIcon,
-  GiftCardIcon,
+
   CaretDownIcon,
   CaretUpIcon,
-  GiftCardFilledIcon,
-  MaximizeIcon,
-  MinimizeIcon,
   DiscountIcon,
   SettingsIcon,
   BlogIcon,
@@ -44,6 +41,7 @@ import CollectionPickerModal from "./components/CollectionPickerModal";
 import Colabssiblecom from "./components/Colabssiblecom";
 import ActiveDatesPicker from "./components/ActiveDatesPicker";
 import ContentEditor from "./components/ContentEditor";
+import PreviewCard from "./components/PreviewCard";
 
 
 
@@ -70,8 +68,7 @@ export default function CampaignIndexTable() {
   // popover for "Add a new goal"
   const [active, setActive] = useState(false);
 
-  // progress bar preview %
-  const [progress, setProgress] = useState(50);
+  
 
   // Gift product picker modal
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -87,9 +84,6 @@ export default function CampaignIndexTable() {
   const [status, setStatus] = useState("draft");
   const [name, setName] = useState("Cart Goal 6");
 
-  // preview mock data
-  const [currentCartValue, setCurrentCartValue] = useState(300); // INR
-  const [currentCartQty, setCurrentCartQty] = useState(2); // items
 
   // SaveBar state
   const [saveBarOpen, setSaveBarOpen] = useState(false);
@@ -99,6 +93,8 @@ export default function CampaignIndexTable() {
   const [shakeSaveBar, setShakeSaveBar] = useState(false);
 
   const [content, setContent] = useState({ title: "", subtitle: "" });
+
+  const [activeContentGoal, setActiveContentGoal] = useState(null);
 
 
   // Inside CampaignIndexTable component
@@ -321,7 +317,7 @@ const defaultContent = {
           start: { date: null, time: null },
           end: null,
         },
-               content: { ...defaultContent, ...editingCampaign.content }, 
+content: editingCampaign.content || {},  
       };
 
       setName(snap.campaignName);
@@ -713,7 +709,10 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                             objectFit: "cover",
                           }}
                         />
-                        <Text>{p.title}</Text>
+                      <Text>
+  {p.productTitle ? `${p.productTitle} - ${p.title}` : p.title}
+</Text>
+
                       </div>
                       <Button
                         plain
@@ -989,7 +988,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                     <Text>
                       {" "}
                       {p.productTitle
-                        ? `${p.productTitle} — ${p.title}`
+                        ? `${p.productTitle} - ${p.title}`
                         : p.title}
                     </Text>
                   </div>
@@ -1702,7 +1701,66 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
               description="Customize content shown for this campaign and manage translations to languages."
               icon={BlogIcon}>
 
-<ContentEditor value={content} onChange={setContent}   type={isBxgy ? "bxgy" : "tiered"}  />
+{isBxgy ? (
+  <ContentEditor
+    value={content}
+    onChange={(val) => setContent(val)}
+    type="bxgy"
+  />
+) : (
+  <BlockStack gap="400">
+    {goals.map((goal, index) => {
+      const num = index + 1;
+      const suffix =
+        num === 1 ? "st" :
+        num === 2 ? "nd" :
+        num === 3 ? "rd" : "th";
+
+      const goalKey = `${num}${suffix} goal`;
+      const isOpen = activeContentGoal === goalKey;
+
+      return (
+        <Card key={goal.id}>
+          <Box >
+            {/* Header Row */}
+            <InlineStack align="space-between" blockAlign="center">
+              <Text variant="headingSm" fontWeight="bold">
+                {goalKey}
+              </Text>
+
+              <Button
+                onClick={() =>
+                  setActiveContentGoal(isOpen ? null : goalKey)
+                }
+              >
+                {isOpen ? "Close" : "Edit"}
+              </Button>
+            </InlineStack>
+
+            {/* Collapsible Content */}
+            <Collapsible open={isOpen}>
+              <Box paddingBlockStart="400">
+                <ContentEditor
+                  value={content[goalKey] || {}}
+                  onChange={(val) =>
+                    setContent((prev) => ({
+                      ...prev,
+                      [goalKey]: val,
+                    }))
+                  }
+                  type="tiered"
+                />
+              </Box>
+            </Collapsible>
+          </Box>
+        </Card>
+      );
+    })}
+  </BlockStack>
+)}
+
+
+
               </Colabssiblecom>
 
               {/* ------------------------------------------------------------------ */}
@@ -1784,115 +1842,8 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
 
               {/* Original Preview card (only for non-bxgy) */}
               {!isBxgy && (
-                <Card>
-                  <Box
-                    padding="400"
-                    borderBottomWidth="1"
-                    borderColor="border-subdued"
-                  >
-                    <Text variant="headingSm" as="h3" fontWeight="bold">
-                      Preview
-                    </Text>
-                  </Box>
+        <PreviewCard goals={goals} selected={selected} />
 
-                  <Box padding="400">
-                    {/* Dynamic Remaining Text */}
-                    {selected === "cart" && goals[0]?.target ? (
-                      <Text>
-                        {currentCartValue >= goals[0].target ? (
-                          <>🎉 Goal reached!</>
-                        ) : (
-                          <>
-                            Add{" "}
-                            <strong>
-                              ₹{goals[0].target - currentCartValue}
-                            </strong>{" "}
-                            more to unlock a reward
-                          </>
-                        )}
-                      </Text>
-                    ) : selected === "quantity" && goals[0]?.target ? (
-                      <Text>
-                        {currentCartQty >= goals[0].target ? (
-                          <>🎉 Goal reached!</>
-                        ) : (
-                          <>
-                            Add{" "}
-                            <strong>
-                              {goals[0].target - currentCartQty} more items
-                            </strong>{" "}
-                            to unlock a reward
-                          </>
-                        )}
-                      </Text>
-                    ) : (
-                      <Text>Select a goal to start tracking</Text>
-                    )}
-
-                    {/* Progress Bar */}
-                    <div
-                      style={{
-                        margin: "1rem 0",
-                      }}
-                    >
-                      <ProgressBar progress={progress} size="medium" />
-                    </div>
-
-                    {/* Render milestones from goals */}
-                    <InlineStack
-                      gap="loose"
-                      align="center"
-                      blockAlign="center"
-                      justify="space-between"
-                    >
-                      {goals.map((goal) => {
-                        let label = "";
-
-                        if (goal.type === "free_product") {
-                          label = "Free Gift!";
-                        } else if (goal.type === "free_shipping") {
-                          label = "Free Shipping";
-                        } else if (goal.type === "order_discount") {
-                          if (goal.discountType === "percentage") {
-                            label = `${goal.discountValue || 0}% Off`;
-                          } else if (goal.discountType === "amount") {
-                            label = `INR ${goal.discountValue || 0} Off`;
-                          }
-                        }
-
-                        return (
-                          <div
-                            key={goal.id}
-                            style={{
-                              textAlign: "center",
-                              flex: 1,
-                            }}
-                          >
-                            <Icon source={GiftCardIcon} tone="base" />
-                            <Text variant="bodySm">{label}</Text>
-                          </div>
-                        );
-                      })}
-                    </InlineStack>
-                  </Box>
-
-                  <Box
-                    padding="400"
-                    borderTopWidth="1"
-                    borderColor="border-subdued"
-                    background="bg-surface"
-                  >
-                    <Text>Use this to adjust the progress bar</Text>
-
-                    <RangeSlider
-                      min={0}
-                      max={100}
-                      value={progress}
-                      onChange={setProgress}
-                      output
-                    />
-                  </Box>
-                </Card>
               )}
             </BlockStack>
           </Layout.Section>

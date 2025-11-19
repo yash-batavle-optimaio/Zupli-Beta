@@ -21,6 +21,8 @@ export default function CurrencyManager() {
 
   const hiddenInputRef = useRef(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+const [showDecimals, setShowDecimals] = useState("no"); // or "yes"
+const [initialShowDecimals, setInitialShowDecimals] = useState("no");
 
   /* ---------------- Fetch existing metafield ---------------- */
   useEffect(() => {
@@ -36,10 +38,14 @@ export default function CurrencyManager() {
           setInitialCurrencies(data.currencies);
           setInitialDefault(data.defaultCurrency);
 
+          setShowDecimals(data.showDecimals || "no");
+setInitialShowDecimals(data.showDecimals || "no");
+
           // ✅ Set BOTH defaultValue and value BEFORE enabling tracking
           const json = JSON.stringify({
             currencies: data.currencies,
             defaultCurrency: data.defaultCurrency,
+              showDecimals: data.showDecimals || "no",
           });
           if (hiddenInputRef.current) {
             hiddenInputRef.current.defaultValue = json; // baseline
@@ -63,7 +69,7 @@ export default function CurrencyManager() {
     if (!hasLoaded) return;
     if (!hiddenInputRef.current) return;
 
-    const newValue = JSON.stringify({ currencies, defaultCurrency });
+    const newValue = JSON.stringify({ currencies, defaultCurrency, showDecimals});
 
     // ✅ Only trigger if value differs from defaultValue
     if (hiddenInputRef.current.defaultValue !== newValue) {
@@ -74,7 +80,7 @@ export default function CurrencyManager() {
       // No changes — hide Save Bar if shown
       hiddenInputRef.current.value = newValue;
     }
-  }, [currencies, defaultCurrency, hasLoaded]);
+  }, [currencies, defaultCurrency,showDecimals, hasLoaded]);
 
   const handleSetDefault = (code) => setDefaultCurrency(code);
 
@@ -129,7 +135,7 @@ return (
       data-save-bar
       onSubmit={async (e) => {
         e.preventDefault();
-        const payload = { currencies, defaultCurrency };
+        const payload = { currencies, defaultCurrency, showDecimals };
         const res = await fetch("/api/save-currencies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -140,7 +146,7 @@ return (
           console.log("✅ Saved currencies to metafield");
 
           // ✅ Reset baseline (so Save Bar hides again)
-          const json = JSON.stringify({ currencies, defaultCurrency });
+          const json = JSON.stringify({ currencies, defaultCurrency, showDecimals });
           hiddenInputRef.current.defaultValue = json;
           hiddenInputRef.current.value = json;
           const evt = new Event("change", { bubbles: true });
@@ -148,6 +154,7 @@ return (
 
           setInitialCurrencies(currencies);
           setInitialDefault(defaultCurrency);
+
         } else {
           console.error("❌ Failed to save:", data.errors);
         }
@@ -158,12 +165,14 @@ return (
   // Restore from backup (React state)
   setCurrencies(initialCurrencies);
   setDefaultCurrency(initialDefault);
+  setShowDecimals(initialShowDecimals);
 
   // Wait for React to finish rendering restored state
   requestAnimationFrame(() => {
     const json = JSON.stringify({
       currencies: initialCurrencies,
       defaultCurrency: initialDefault,
+       showDecimals: initialShowDecimals,
     });
 
     if (hiddenInputRef.current) {
@@ -187,6 +196,7 @@ return (
         defaultValue={JSON.stringify({
           currencies: initialCurrencies,
           defaultCurrency: initialDefault,
+              showDecimals: initialShowDecimals,
         })}
       />
 
@@ -198,6 +208,8 @@ return (
             onDelete={handleDeleteCurrency}
             onSetDefault={handleSetDefault}
             defaultCurrency={defaultCurrency}
+             showDecimals={showDecimals}
+  setShowDecimals={setShowDecimals}
           />
 
           <Box paddingBlockStart="400">

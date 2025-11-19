@@ -1,5 +1,8 @@
+
 <script>
   window.__OPTIMAIO_CAMPAIGNS__ = {{ shop.metafields.optimaio_cart.campaigns.value | json }};
+    window.__OPTIMAIO_CURRENCIES__ = {{ shop.metafields.optimaio_cart.currencies.value | json }};
+      window.__SHOP_MONEY_FORMAT__ = "{{ shop.money_format | escape }}";
 </script>
 <script src="{{ 'free-gift.js' | asset_url }}" defer></script>
 <script src="{{ 'bxgy.js' | asset_url }}" defer></script>
@@ -74,7 +77,81 @@
     <button class="optimaio-tab-btn" data-target="offers">🎁 Offers</button>
   </div>
 </div>
+
+
  
+{% raw %}
+<script>
+function extractToken(format) {
+  const match = format.match(/{{\s*([^}]+?)\s*}}/);
+  return match ? match[1] : null;
+}
+
+// Shopify fallback
+function shopifyFallbackMoneyFormat(amountInCents) {
+  const format = window.__SHOP_MONEY_FORMAT__ || "{{amount}}";
+  const amount = (amountInCents / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  return format.replace("{{amount}}", amount)
+               .replace("{{amount_with_comma_separator}}", amount);
+}
+
+function formatOptimaioPrice(amountInCents) {
+  const data = window.__OPTIMAIO_CURRENCIES__;
+  const amount = amountInCents / 100;
+    const showDecimals = data.showDecimals === "yes";  // 👈 MAIN FEATURE
+
+
+  const currentCurrency =
+    Shopify?.currency?.active || data.defaultCurrency || "INR";
+
+    console.log("This is default currency of shop:",currentCurrency);
+  const match = data.currencies?.find(c => c.code === currentCurrency);
+  if (!match) {
+  console.log("Metafield currency not found → using Shopify fallback");
+  console.log("This is shop macth:",match,amountInCents );
+ return shopifyFallbackMoneyFormat(amountInCents);
+
+}
+    console.log("Verify &&&");
+  let format = match?.format || "{{amount}}";
+
+  const token = extractToken(format);
+  console.log("Token detected:", token);
+
+   // build local amount formatter
+  function formatAmount(base, useDecimals) {
+    return base.toLocaleString(undefined, {
+      minimumFractionDigits: useDecimals ? 2 : 0,
+      maximumFractionDigits: useDecimals ? 2 : 0,
+    });
+  }
+
+
+  const tokenFormats = {
+    "amount": formatAmount(amount, showDecimals),
+    "amount_no_decimals": formatAmount(amount, false),
+    "amount_with_comma_separator": amount.toLocaleString("de-DE", {
+      minimumFractionDigits: showDecimals ? 2 : 0,
+      maximumFractionDigits: showDecimals ? 2 : 0,
+    }),
+    "amount_no_decimals_with_comma_separator": amount.toLocaleString("de-DE", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }),
+  };
+
+  const formattedAmount = tokenFormats[token] || amount.toLocaleString();
+
+  const finalOutput = format.replace(`{{${token}}}`, formattedAmount);
+
+  return finalOutput;
+}
+</script>
+{% endraw %}
+
 <script>
 (function(){
   if(window.OptimaioCartDrawerInit) return;
@@ -84,6 +161,7 @@
   document.addEventListener("shopify:section:load", initOptimaioDrawer);
  
   function initOptimaioDrawer(){
+    console.log("Function is running");
     const cornerCart = document.getElementById("optimaio-corner-cart");
     const cartDrawer = document.getElementById("optimaio-cart-drawer");
     if(!cornerCart || !cartDrawer) return;
@@ -125,12 +203,18 @@
         b.classList.toggle("active", b.dataset.target === tab)
       );
     }
+    
     cartDrawer.querySelector(".optimaio-cart-drawer__footer").addEventListener("click", (e) => {
       const btn = e.target.closest(".optimaio-tab-btn");
       if (!btn) return;
       setActiveTab(btn.dataset.target);
     });
     setActiveTab("cart");
+    // 🧠 Currency Formatter
+
+    
+
+
  
     function renderCart(cart) {
       document.getElementById("optimaio-corner-cart-count").textContent = cart.item_count;
@@ -160,8 +244,8 @@
         </div>
         <div class="optimaio-cart-item__pricing">
           ${item.original_line_price > item.final_line_price
-            ? `<span class="optimaio-compare-at">₹${(item.original_line_price/100).toLocaleString()}</span>` : ""}
-          <span class="optimaio-price">₹${(item.final_line_price/100).toLocaleString()}</span>
+            ? `<span class="optimaio-compare-at">${formatOptimaioPrice(item.original_line_price)}</span>` : ""}
+          <span class="optimaio-price">${formatOptimaioPrice(item.final_line_price)}</span>
         </div>
       </div>
       ${item.discounts && item.discounts.length ? `
@@ -172,8 +256,8 @@
   </div>
 `).join("");
  
-      totalEl.textContent = "₹" + (cart.total_price / 100).toLocaleString();
-      discountEl.textContent = "-₹" + ((cart.original_total_price - cart.total_price) / 100).toLocaleString();
+    totalEl.textContent = formatOptimaioPrice(cart.total_price);
+discountEl.textContent = "-" + formatOptimaioPrice(cart.original_total_price - cart.total_price);
       if (cart.items.length) loadRecommendations(cart.items[0].product_id);
       attachItemHandlers();
     }
@@ -225,7 +309,8 @@
         <div class="optimaio-recommendation-card">
           <div class="optimaio-rec-image"><img src="${p.featured_image}" alt="${p.title}"></div>
           <div class="optimaio-rec-content"><p class="optimaio-rec-title">${p.title}</p>
-          <p class="optimaio-rec-price">₹${(p.variants[0].price / 100).toLocaleString()}</p></div>
+<p class="optimaio-rec-price">₹${(p.variants[0].price / 100).toLocaleString()}</p>
+
           <button class="optimaio-rec-add" data-id="${p.variants[0].id}">Add</button>
         </div>
       `).join("");
@@ -362,4 +447,3 @@
 "settings": []
 }
 {% endschema %}
- 

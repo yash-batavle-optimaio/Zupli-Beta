@@ -21,10 +21,12 @@ export default function CurrencyTable({
   onDelete,
   onSetDefault,
   defaultCurrency,
+    showDecimals,
+  setShowDecimals,
 }) {
   const [editingCode, setEditingCode] = useState(null);
   const [popoverActive, setPopoverActive] = useState(null);
-  const [showDecimals, setShowDecimals] = useState(["no"]);
+
 const [formats, setFormats] = useState(
   Object.fromEntries(currencies.map((c) => [c.code, c.format]))
 );
@@ -194,7 +196,7 @@ const handleLockedInputChange = (code, e) => {
                 { label: "No", value: "no" },
               ]}
               selected={showDecimals}
-              onChange={setShowDecimals}
+              onChange={(value) => setShowDecimals(value[0])}
               allowMultiple={false}
             />
           </Box>

@@ -50,12 +50,13 @@ export const action = async ({ request }) => {
 
   // Parse request JSON
   const body = await request.json();
-  const { currencies, defaultCurrency } = body;
+  const { currencies, defaultCurrency , showDecimals} = body;
 
   // Build metafield value object
   const valueObj = {
     currencies,
     defaultCurrency,
+      showDecimals, // ✅ SAVE THIS
     updatedAt: new Date().toISOString(),
   };
 
