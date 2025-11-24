@@ -1,6 +1,20 @@
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 
+function getDefaultActiveDates() {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, "0");
+  const d = String(today.getDate()).padStart(2, "0");
+
+  return {
+    start: { date: `${y}-${m}-${d}` },
+    end: { date: null },
+    hasEndDate: false,
+  };
+}
+
+
 /* ------------------ Helper: Save metafield ------------------ */
 async function setMetafield(admin, shopId, key, valueObj) {
   const mutation = `
@@ -176,6 +190,7 @@ export const action = async ({ request }) => {
     campaignName: `Cart goals ${nextNumber}`,
     status: "draft",
     campaignType: "tiered",
+      activeDates: getDefaultActiveDates(), 
   };
   campaigns.push(newCampaign);
 

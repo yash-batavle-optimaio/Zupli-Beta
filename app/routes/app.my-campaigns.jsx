@@ -113,6 +113,24 @@ const [tieredGeneralErrors, setTieredGeneralErrors] = useState([]); // e.g., ["A
 
   const [nameError, setNameError] = useState("");
 
+  const [defaultCurrency, setDefaultCurrency] = useState("INR");
+
+  useEffect(() => {
+  async function fetchDefaultCurrency() {
+    try {
+      const res = await fetch("/api/get-currencies");
+      const data = await res.json();
+      if (data.ok && data.defaultCurrency) {
+        setDefaultCurrency(data.defaultCurrency);
+      }
+    } catch (err) {
+      console.error("⚠️ Could not load default currency:", err);
+    }
+  }
+
+  fetchDefaultCurrency();
+}, []);
+
 
   function validateTiered(goals = [], trackType = "cart") {
   const perGoal = {}; // { [id]: { field: "error" } }
@@ -744,7 +762,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
 
               {/* Spend threshold */}
               <TextField
-                label="Minimum Spend (₹)"
+                label="Minimum Spend"
                 type="number"
                 value={bxgyGoal.spendAmount || 0}
                 onChange={(val) =>
@@ -1068,7 +1086,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
             <Box paddingBlockStart="400">
               <TextField
                 label="Discount Value"
-                prefix={bxgyGoal.discountType === "fixed" ? "INR" : "%"}
+                prefix={bxgyGoal.discountType === "fixed" ? defaultCurrency: "%"}
                 type="number"
                 value={bxgyGoal.discountValue || ""}
                 onChange={(val) =>
@@ -1252,7 +1270,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                       type="number"
                                       value={goal.target || ""}
                                       prefix={
-                                        selected === "cart" ? "INR" : "Qty"
+                                        selected === "cart" ? defaultCurrency : "Qty"
                                       }
                                       onChange={(val) =>
                                         setGoals((prev) =>
@@ -1615,7 +1633,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                             <TextField
                                               prefix={
                                                 goal.discountType === "amount"
-                                                  ? "INR"
+                                                  ? defaultCurrency
                                                   : "%"
                                               }
                                               type="number"
@@ -1831,7 +1849,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                           Discount:{" "}
                           <strong>
                             {g.discountValue || 0}
-                            {g.discountType === "fixed" ? " INR off" : "% off"}
+                            {g.discountType === "fixed" ? ` ${defaultCurrency} off` : "% off"}
                           </strong>
                         </Text>
                       );

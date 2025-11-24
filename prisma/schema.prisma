@@ -27,3 +27,15 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+
+model CartEvent {
+  id         String   @id @default(cuid())
+  cartId     String
+  eventType  String
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  @@index([cartId])
+  @@index([eventType])
+}

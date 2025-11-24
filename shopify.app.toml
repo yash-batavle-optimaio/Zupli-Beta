@@ -36,6 +36,10 @@ api_version = "2025-10"
   topics = [ "carts/create" ]
   uri = "/webhooks/app/cart_create"
 
+   [[webhooks.subscriptions]]
+  topics = [ "carts/update" ]
+  uri = "/webhooks/app/cart_update"
+
   [app_proxy]
 url = "/optimaio-cart"
 prefix = "apps"

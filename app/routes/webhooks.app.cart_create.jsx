@@ -1,49 +1,75 @@
 import { authenticate } from "../shopify.server";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export const loader = () =>
   Response.json({ message: "👋 Webhook endpoint: POST only." });
 
 export const action = async ({ request }) => {
-  // Authenticate webhook (gives topic, payload, admin API, shop, session)
-  const { topic, admin, payload, session, shop } =
-    await authenticate.webhook(request);
+  const { topic, payload, session, shop } = await authenticate.webhook(request);
 
-  // console.log(`🧭 Webhook received: ${topic} for shop ${shop}`);
-  // console.log("📦 Payload:", JSON.stringify(payload, null, 2));
-
-  // ❗ Webhooks fire even if the app is uninstalled → check session!
   if (!session) {
-    console.warn("⚠️ No active session found. Shop may have uninstalled.");
-    throw new Response();
+    console.warn("⚠️ No active session — shop may be uninstalled.");
+    return new Response();
   }
 
-  /** ---------------------------------------------------------------
+  /* ---------------------------------------------------------------
    * 🛒 CART CREATED (CARTS_CREATE)
-   * This fires only for ONLINE STORE carts — not custom storefronts.
+   * REST-style payload:
+   * { id, token, line_items, updated_at, created_at }
    * --------------------------------------------------------------- */
   if (topic === "CARTS_CREATE") {
     try {
       console.log("🛒 New cart created!");
 
-      // Payload contains full CartNext data
-      // Example: access cart details
       const cartId = payload.id;
-      const buyerIdentity = payload.buyerIdentity;
-      const lineItems = payload.lines?.edges ?? [];
+      const token = payload.token;
+      const lineItems = payload.line_items ?? [];
 
       console.log("🆔 Cart ID:", cartId);
-      console.log("👤 Buyer:", JSON.stringify(buyerIdentity, null, 2));
-      console.log("🛍️ Items:", JSON.stringify(lineItems, null, 2));
+      console.log("🔑 Token:", token);
+      console.log("🛍️ Cart Items:", JSON.stringify(lineItems, null, 2));
 
-      // Example: Save cart to DB, trigger workflows, etc.
-      // await saveCartToDatabase(payload);
+      // ✅ Save the event to Prisma
+      await prisma.cartEvent.create({
+        data: {
+          cartId,
+          eventType: "CARTS_CREATE",
+          payload,
+        },
+      });
+
+      console.log("✅ CARTS_CREATE saved to DB");
+
     } catch (err) {
-      console.error("🚨 Error handling CARTS_CREATE webhook:", err);
+      console.error("🚨 CARTS_CREATE Error:", err);
     }
   }
 
-  // You can extend more topics here if needed  
-  // if (topic === "CARTS_UPDATE") { ... }
+  /* ---------------------------------------------------------------
+   * 🛒 CART UPDATED (CARTS_UPDATE)
+   * Contains same REST-style format.
+   * --------------------------------------------------------------- */
+  if (topic === "CARTS_UPDATE") {
+    try {
+      console.log("🛒 Cart updated!");
+      console.log("📦 Full Cart Payload:", JSON.stringify(payload, null, 2));
 
-  return new Response();
+      await prisma.cartEvent.create({
+        data: {
+          cartId: payload.id,
+          eventType: "CARTS_UPDATE",
+          payload,
+        },
+      });
+
+      console.log("✅ CARTS_UPDATE saved to DB");
+
+    } catch (err) {
+      console.error("🚨 CARTS_UPDATE Error:", err);
+    }
+  }
+
+  return new Response("ok");
 };
