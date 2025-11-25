@@ -20,9 +20,6 @@ const shopify = shopifyApp({
     afterAuth: async ({ admin, session }) => {
       console.log("App installed for:", session.shop);
 
-     
-
-      console.log("Storefront Token Created:", result.storefrontAccessTokenCreate.storefrontAccessToken);
     },
   },
   distribution: AppDistribution.AppStore,
