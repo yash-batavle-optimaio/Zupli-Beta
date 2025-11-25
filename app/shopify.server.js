@@ -21,12 +21,7 @@ const shopify = shopifyApp({
     afterAuth: async ({ admin, session }) => {
       console.log("App installed for:", session.shop);
 
-      // Create Storefront Token
-      const result = await createStorefrontAccessToken({
-        shop: session.shop,
-        adminAccessToken: session.accessToken,
-        title: "My App Storefront Token",
-      });
+     
 
       console.log("Storefront Token Created:", result.storefrontAccessTokenCreate.storefrontAccessToken);
     },
