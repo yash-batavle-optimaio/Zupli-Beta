@@ -7,7 +7,6 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 import "dotenv/config";
-import { createStorefrontAccessToken } from "./routes/shopify-admin";
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
