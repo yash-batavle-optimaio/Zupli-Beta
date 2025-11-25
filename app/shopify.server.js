@@ -7,6 +7,7 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 import "dotenv/config";
+import { createStorefrontAccessToken } from "./routes/shopify-admin";
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -16,6 +17,20 @@ const shopify = shopifyApp({
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
+    hooks: {
+    afterAuth: async ({ admin, session }) => {
+      console.log("App installed for:", session.shop);
+
+      // Create Storefront Token
+      const result = await createStorefrontAccessToken({
+        shop: session.shop,
+        adminAccessToken: session.accessToken,
+        title: "My App Storefront Token",
+      });
+
+      console.log("Storefront Token Created:", result.storefrontAccessTokenCreate.storefrontAccessToken);
+    },
+  },
   distribution: AppDistribution.AppStore,
   future: {
     unstable_newEmbeddedAuthStrategy: true,
