@@ -1,9 +1,8 @@
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-  return authenticate.admin(request, {
-    async afterAuth({ session }) {
-      console.log("🔥 INSTALL TRIGGERED FOR SHOP:", session.shop);
-    }
-  });
+  console.log("App installed for shop: YAShopifyTestStore.myshopify.com");
+  await authenticate.admin(request);
+
+  return null;
 };
