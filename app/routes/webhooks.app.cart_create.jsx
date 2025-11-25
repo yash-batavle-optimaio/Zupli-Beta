@@ -51,7 +51,7 @@ export const action = async ({ request }) => {
    * 🛒 CART UPDATED (CARTS_UPDATE)
    * Contains same REST-style format.
    * --------------------------------------------------------------- */
-  if (topic === "CARTS_UPDATE") {
+  if (topic === "CARTS_CREATE") {
     try {
       console.log("🛒 Cart updated!");
       console.log("📦 Full Cart Payload:", JSON.stringify(payload, null, 2));
@@ -59,7 +59,7 @@ export const action = async ({ request }) => {
       await prisma.cartEvent.create({
         data: {
           cartId: payload.id,
-          eventType: "CARTS_UPDATE",
+          eventType: "CARTS_CREATE",
           payload,
         },
       });

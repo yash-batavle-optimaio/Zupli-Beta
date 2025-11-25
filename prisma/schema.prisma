@@ -30,12 +30,26 @@ model Session {
 
 
 model CartEvent {
-  id         String   @id @default(cuid())
-  cartId     String
-  eventType  String
-  payload    Json
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  cartId      String
+  storeId     String
+  customerId  String?  // optional because guest carts have no customer
+  eventType   String
+  payload     Json
+  createdAt   DateTime @default(now())
 
   @@index([cartId])
   @@index([eventType])
+  @@index([storeId])
+  @@index([customerId])
+}
+
+
+
+model Shop {
+  id                      String   @id @default(cuid())
+  shopDomain              String   @unique
+  storefrontAccessToken   String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }

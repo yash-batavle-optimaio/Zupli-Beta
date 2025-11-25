@@ -7,7 +7,7 @@ export const loader = () =>
   Response.json({ message: "👋 Webhook endpoint: POST only." });
 
 export const action = async ({ request }) => {
-  const { topic, payload, session } = await authenticate.webhook(request);
+  const { topic, payload, session, shop } = await authenticate.webhook(request);
 
   if (!session) {
     console.warn("⚠️ No active session found. Shop may have uninstalled.");
@@ -18,16 +18,32 @@ export const action = async ({ request }) => {
     console.log("🛒 Full Cart Webhook Data:");
     console.log(JSON.stringify(payload, null, 2));
 
+    // -----------------------------
+    // Extract Analytics Data
+    // -----------------------------
+    const cartId = payload.id;
+    const storeId = shop;                           // e.g. mystore.myshopify.com
+    const customerId = payload.buyerIdentity?.customer?.id ?? null;
+
+    console.log("📊 Analytics Data:");
+    console.log("Store ID:", storeId);
+    console.log("Cart ID:", cartId);
+    console.log("Customer ID:", customerId);
+    console.log("Extra Data",JSON.stringify(payload.buyerIdentity, null, 2));
+
+
     try {
       await prisma.cartEvent.create({
         data: {
-          cartId: payload.id,
+          cartId,
+          storeId,
+          customerId,
           eventType: "CARTS_UPDATE",
-          payload: payload,
+          payload,
         },
       });
 
-      console.log("✅ Saved to DB!");
+      console.log("✅ Saved analytics data to DB!");
     } catch (err) {
       console.error("❌ DB Save Error:", err);
     }
