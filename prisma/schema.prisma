@@ -46,10 +46,20 @@ model CartEvent {
 
 
 
-model Shop {
-  id                      String   @id @default(cuid())
-  shopDomain              String   @unique
-  storefrontAccessToken   String
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+model CartSession {
+  id          String   @id @default(cuid())
+  storeId     String
+  cartId      String   // hWN5jUcNU0...
+  cartKey     String?  // security key
+  customerId  String?  // logged in user OR null
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([customerId])
+  @@index([cartId])
 }
+
+
+

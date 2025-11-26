@@ -5,6 +5,30 @@
 
   console.log("🎁 Ultra-Fast Dynamic Free Gift script initializing…");
 
+  
+  async function syncCustomer(cartToken) {
+  if (!window.__CUSTOMER_ID__ && !window.__CUSTOMER_EMAIL__) {
+    console.warn("Customer not logged in — skipping sync.");
+    return;
+  }
+
+  console.log("🔗 Syncing customer & cart:", {
+    cartToken,
+    customerId: window.__CUSTOMER_ID__,
+    email: window.__CUSTOMER_EMAIL__
+  });
+
+  await fetch("/apps/optimaio-cart/synccustomer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      cartToken,
+      customerId: window.__CUSTOMER_ID__,
+      email: window.__CUSTOMER_EMAIL__
+    })
+  });
+}
+
   // ----------------------------
   // 🔒 STATE & UTILITIES
   // ----------------------------
@@ -64,8 +88,9 @@
       return cachedCampaign;
 
     try {
-      const res = await fetch("/apps/optimaio-cart", { cache: "no-store" });
+      const res = await fetch("/apps/optimaio-cart/campaigns", { cache: "no-store" });
       const data = await res.json();
+      console.log("🧠 Free Gift campaigns (fetched fresh):", data);
       const active = (data.campaigns || []).filter(c => c.status === "active");
       if (active.length) {
         active.sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
@@ -265,6 +290,14 @@
 
   setTimeout(async () => {
     const cart = await getCart(true);
+    
+
+  console.log("🎁 Free Gift script initialized.",cart.key);
+  console.log("🛒 Cart Token:", cart.token);
+  console.log("Customer ID:", window.__CUSTOMER_ID__);
+  console.log("Customer Email:", window.__CUSTOMER_EMAIL__);
+
+    syncCustomer(cart.token);
     for (const i of cart.items)
       if (i.properties?.isFreeGift === "true" && i.quantity !== 1)
         await updateQuantityToOne(i.key);

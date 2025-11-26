@@ -23,7 +23,7 @@ export const action = async ({ request }) => {
     // -----------------------------
     const cartId = payload.id;
     const storeId = shop;                           // e.g. mystore.myshopify.com
-    const customerId = payload.buyerIdentity?.customer?.id ?? null;
+    const customerId = payload.buyerIdentity;
 
     console.log("📊 Analytics Data:");
     console.log("Store ID:", storeId);

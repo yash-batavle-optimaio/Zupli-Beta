@@ -20,29 +20,6 @@ const shopify = shopifyApp({
     afterAuth: async ({ admin, session }) => {
       console.log("App installed for:", session.shop);
 
-      try {
-      const resp = await admin.graphql(`
-        mutation {
-          storefrontAccessTokenCreate(input: { title: "My Token" }) {
-            storefrontAccessToken {
-              id
-              accessToken
-            }
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-      `);
-
-      const data = await resp.json();
-
-      console.log("Storefront Token Created:", data.data.storefrontAccessTokenCreate.storefrontAccessToken);
-    } catch (error) {
-      console.error("Storefront Token Error:", error);
-    }
-
     },
   },
   distribution: AppDistribution.AppStore,

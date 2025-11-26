@@ -58,7 +58,7 @@
     }
 
     try {
-      const res = await fetch("/apps/optimaio-cart", { cache: "no-store" });
+      const res = await fetch("/apps/optimaio-cart/campaigns", { cache: "no-store" });
       const data = await res.json();
       console.log("🧠 BXGY campaigns (fetched fresh):", data);
       cache.data = data;

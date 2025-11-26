@@ -1,6 +1,9 @@
 <script>
   window.__optimaioMoneyFormat = {{ shop.money_format | json }};
+  window.__CUSTOMER_ID__ = "{{ customer.id | default: '' }}";
+window.__CUSTOMER_EMAIL__ = "{{ customer.email | default: '' }}";
 </script>
+
 
 
 <script src="{{ 'optimaio.js' | asset_url }}" defer></script>
