@@ -73,7 +73,7 @@
     const now = Date.now();
     if (cache && now - cacheTime < CACHE_TIME) return cache;
 
-    const res = await fetch("/apps/optimaio-cart", { cache: "no-store" });
+    const res = await fetch("/apps/optimaio-cart/campaigns", { cache: "no-store" });
     cache = await res.json();
     cacheTime = now;
     return cache;

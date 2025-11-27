@@ -19,7 +19,7 @@ export const action = async ({ request }) => {
    * REST-style payload:
    * { id, token, line_items, updated_at, created_at }
    * --------------------------------------------------------------- */
-  if (topic === "CARTS_CREATE") {
+  if (topic === "CARTS_UPDATE") {
     try {
       console.log("🛒 New cart created!");
 

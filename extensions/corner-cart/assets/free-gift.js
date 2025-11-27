@@ -16,13 +16,14 @@ async function scheduleSync() {
 
   syncTimer = setTimeout(async () => {
     const cart = await getCart(true);
+     console.log("⏳ 15s passed — Doing ONE-TIME sync:");
+    console.log("🛒 Final Cart Token Sent:", cart.token);
       if (!window.__CUSTOMER_ID__ && !window.__CUSTOMER_EMAIL__) {
     console.warn("Customer not logged in — skipping sync.");
     return;
   }
 
-    console.log("⏳ 15s passed — Doing ONE-TIME sync:");
-    console.log("🛒 Final Cart Token Sent:", cart.token);
+   
 
       await fetch("/apps/optimaio-cart/synccustomer", {
     method: "POST",
@@ -38,7 +39,7 @@ async function scheduleSync() {
 
     hasSyncedOnce = true; // 🔒 Never sync again for this cart
 
-  }, 15000);
+  }, 500);
 }
 
 

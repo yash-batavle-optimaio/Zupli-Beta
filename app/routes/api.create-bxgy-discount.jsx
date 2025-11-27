@@ -201,7 +201,7 @@ export const action = async ({ request }) => {
   const newCampaign = {
       id: generateId(),
   campaignName: `Buy X Get Y ${nextNumber}`,
-  status: "active",                     // your example uses active
+  status: "draft",                     // your example uses active
   trackType: "cart",
   campaignType: "bxgy",
   goals: [getDefaultBxgyGoal()],        // 👈 adds default goal
