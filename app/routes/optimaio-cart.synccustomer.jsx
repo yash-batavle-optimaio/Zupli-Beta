@@ -12,9 +12,9 @@ export const action = async ({ request }) => {
     const body = await request.json();
     let { cartToken, customerId, email } = body;
 
-    // Extract token + key
-    let cleanToken = cartToken.split("?")[0];
-    let cartKey = cartToken.includes("?key=")
+    // Clean cart token
+    const cleanToken = cartToken.split("?")[0];
+    const cartKey = cartToken.includes("?key=")
       ? cartToken.split("?key=")[1]
       : null;
 
@@ -28,21 +28,26 @@ export const action = async ({ request }) => {
       }
     });
 
-    return Response.json({
-      success: true,
-      message: "Saved cart session",
-      cartId: cleanToken,
-      cartKey,
-      customerId,
-      email,
-      storeId: shop
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Saved cart session",
+        cartId: cleanToken,
+        cartKey,
+        customerId,
+        email,
+        storeId: shop
+      }),
+      { headers: { "Content-Type": "application/json" } }
+    );
 
   } catch (err) {
-    return Response.json({
-      success: false,
-      error: err.message
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: err.message
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 };
-
