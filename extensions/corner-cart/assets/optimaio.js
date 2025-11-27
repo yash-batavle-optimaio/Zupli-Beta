@@ -42,7 +42,7 @@
 }
 
 function shopifyFallbackMoneyFormat(amountInCents) {
-  const format = window.__SHOP_MONEY_FORMAT__ || "{{amount}}";
+  const format = window.__optimaioMoneyFormat || "{{amount}}";
   const amount = (amountInCents / 100).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2

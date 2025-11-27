@@ -38,8 +38,6 @@ async function scheduleSync() {
     })
   });
 
-    syncCustomer(cart.token);
-
     hasSyncedOnce = true; // 🔒 Never sync again for this cart
 
   }, 500);

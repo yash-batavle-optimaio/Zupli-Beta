@@ -2,6 +2,7 @@
   window.__optimaioMoneyFormat = {{ shop.money_format | json }};
   window.__CUSTOMER_ID__ = "{{ customer.id | default: '' }}";
 window.__CUSTOMER_EMAIL__ = "{{ customer.email | default: '' }}";
+window.__OPTIMAIO_CURRENCIES__ = {{ shop.metafields.optimaio_cart.currencies.value | json }};
 </script>
 
 
