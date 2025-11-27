@@ -5,29 +5,42 @@
 
   console.log("🎁 Ultra-Fast Dynamic Free Gift script initializing…");
 
-  
-  async function syncCustomer(cartToken) {
-  if (!window.__CUSTOMER_ID__ && !window.__CUSTOMER_EMAIL__) {
+let hasSyncedOnce = false;
+let syncTimer = null;
+
+
+async function scheduleSync() {
+  if (hasSyncedOnce) return; // ❌ Already synced — DO NOTHING
+
+  if (syncTimer) clearTimeout(syncTimer);
+
+  syncTimer = setTimeout(async () => {
+    const cart = await getCart(true);
+      if (!window.__CUSTOMER_ID__ && !window.__CUSTOMER_EMAIL__) {
     console.warn("Customer not logged in — skipping sync.");
     return;
   }
 
-  console.log("🔗 Syncing customer & cart:", {
-    cartToken,
-    customerId: window.__CUSTOMER_ID__,
-    email: window.__CUSTOMER_EMAIL__
-  });
+    console.log("⏳ 15s passed — Doing ONE-TIME sync:");
+    console.log("🛒 Final Cart Token Sent:", cart.token);
 
-  await fetch("/apps/optimaio-cart/synccustomer", {
+      await fetch("/apps/optimaio-cart/synccustomer", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      cartToken,
+      cartToken: cart.token,
       customerId: window.__CUSTOMER_ID__,
       email: window.__CUSTOMER_EMAIL__
     })
   });
+
+    syncCustomer(cart.token);
+
+    hasSyncedOnce = true; // 🔒 Never sync again for this cart
+
+  }, 15000);
 }
+
 
   // ----------------------------
   // 🔒 STATE & UTILITIES
@@ -267,7 +280,7 @@
   window.fetch = async (...args) => {
     const res = await _fetch(...args);
     const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
-    if (/\/cart\/(add|change|update|clear)\.js/.test(url)) triggerGiftCheck();
+    if (/\/cart\/(add|change|update|clear)\.js/.test(url)) {triggerGiftCheck();  scheduleSync()}
     return res;
   };
 
@@ -277,8 +290,10 @@
       if (
         typeof url === "string" &&
         /\/cart\/(add|change|update|clear)\.js/.test(url)
-      )
+      ){
         triggerGiftCheck();
+        scheduleSync();  
+      }
     });
     return _open.call(this, method, url, ...rest);
   };
@@ -297,7 +312,6 @@
   console.log("Customer ID:", window.__CUSTOMER_ID__);
   console.log("Customer Email:", window.__CUSTOMER_EMAIL__);
 
-    syncCustomer(cart.token);
     for (const i of cart.items)
       if (i.properties?.isFreeGift === "true" && i.quantity !== 1)
         await updateQuantityToOne(i.key);
