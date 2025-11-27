@@ -73,6 +73,7 @@
     const now = Date.now();
     if (cache && now - cacheTime < CACHE_TIME) return cache;
 
+      console.log("Fetching Optimaio campaign data in progress bar...");
     const res = await fetch("/apps/optimaio-cart/campaigns", { cache: "no-store" });
     cache = await res.json();
     cacheTime = now;

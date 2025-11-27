@@ -10,64 +10,43 @@ export const action = async ({ request }) => {
   const { topic, payload, session, shop } = await authenticate.webhook(request);
 
   if (!session) {
-    console.warn("⚠️ No active session — shop may be uninstalled.");
+    console.warn("⚠️ No active session found. Shop may have uninstalled.");
     return new Response();
   }
 
-  /* ---------------------------------------------------------------
-   * 🛒 CART CREATED (CARTS_CREATE)
-   * REST-style payload:
-   * { id, token, line_items, updated_at, created_at }
-   * --------------------------------------------------------------- */
-  if (topic === "CARTS_UPDATE") {
+  console.log("-------=====Webhook topic received create:", topic);
+  if (topic === "CARTS_CREATE") {
+    console.log("🛒 Full Cart Webhook Data:");
+    console.log(JSON.stringify(payload, null, 2));
+
+    // -----------------------------
+    // Extract Analytics Data
+    // -----------------------------
+    const cartId = payload.id;
+    const storeId = shop;                           // e.g. mystore.myshopify.com
+    const customerId = payload.buyerIdentity;
+
+    console.log("📊 Analytics Data:");
+    console.log("Store ID:", storeId);
+    console.log("Cart ID:", cartId);
+    console.log("Customer ID:", customerId);
+    console.log("Extra Data",JSON.stringify(payload.buyerIdentity, null, 2));
+
+
     try {
-      console.log("🛒 New cart created!");
-
-      const cartId = payload.id;
-      const token = payload.token;
-      const lineItems = payload.line_items ?? [];
-
-      console.log("🆔 Cart ID:", cartId);
-      console.log("🔑 Token:", token);
-      console.log("🛍️ Cart Items:", JSON.stringify(lineItems, null, 2));
-
-      // ✅ Save the event to Prisma
       await prisma.cartEvent.create({
         data: {
           cartId,
+          storeId,
+          customerId,
           eventType: "CARTS_CREATE",
           payload,
         },
       });
 
-      console.log("✅ CARTS_CREATE saved to DB");
-
+      console.log("✅ Saved analytics data to DB! Using CARTS_CREATE webhook.");
     } catch (err) {
-      console.error("🚨 CARTS_CREATE Error:", err);
-    }
-  }
-
-  /* ---------------------------------------------------------------
-   * 🛒 CART UPDATED (CARTS_UPDATE)
-   * Contains same REST-style format.
-   * --------------------------------------------------------------- */
-  if (topic === "CARTS_CREATE") {
-    try {
-      console.log("🛒 Cart updated!");
-      console.log("📦 Full Cart Payload:", JSON.stringify(payload, null, 2));
-
-      await prisma.cartEvent.create({
-        data: {
-          cartId: payload.id,
-          eventType: "CARTS_CREATE",
-          payload,
-        },
-      });
-
-      console.log("✅ CARTS_UPDATE saved to DB");
-
-    } catch (err) {
-      console.error("🚨 CARTS_UPDATE Error:", err);
+      console.error("❌ DB Save Error:", err);
     }
   }
 

@@ -76,6 +76,7 @@ async function scheduleSync() {
   }
 
   async function cartChange(action, payload) {
+      window.__skipGiftCheck = true;   
     window.__isGiftInProgress = true;
     await fetch(`/cart/${action}.js`, {
       method: "POST",
@@ -272,10 +273,13 @@ async function scheduleSync() {
   // ----------------------------
   // ⚡ CART EVENT HOOKS (Debounced)
   // ----------------------------
-  const triggerGiftCheck = () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => ensureFreeGift(), 250);
-  };
+  window.__skipGiftCheck = false;
+
+const triggerGiftCheck = () => {
+  if (window.__skipGiftCheck) return;   // <--- BLOCK RECURSION ENTRY
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => ensureFreeGift(), 250);
+};
 
   const _fetch = window.fetch;
   window.fetch = async (...args) => {

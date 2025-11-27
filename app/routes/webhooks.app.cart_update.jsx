@@ -14,6 +14,7 @@ export const action = async ({ request }) => {
     return new Response();
   }
 
+    console.log("-------=====Webhook topic received update:", topic);
   if (topic === "CARTS_UPDATE") {
     console.log("🛒 Full Cart Webhook Data:");
     console.log(JSON.stringify(payload, null, 2));
@@ -43,7 +44,7 @@ export const action = async ({ request }) => {
         },
       });
 
-      console.log("✅ Saved analytics data to DB!");
+      console.log("✅ Saved analytics data to DB! Using CARTS_UPDATE webhook.");
     } catch (err) {
       console.error("❌ DB Save Error:", err);
     }
