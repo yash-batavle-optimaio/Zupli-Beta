@@ -85,6 +85,8 @@ async function scheduleSync() {
     });
     await sleep(WAIT);
     window.__isGiftInProgress = false;
+    window.__skipGiftCheck = false;
+
   }
 
   const addToCart = id =>
@@ -203,6 +205,18 @@ async function scheduleSync() {
     document.getElementById("optimaio-confirm-gifts").onclick = async () => {
       popup.style.display = "none";
       for (const vid of selected) await addToCart(vid);
+       // Wait until skipGiftCheck resets
+  const waitForClear = () =>
+    new Promise(resolve => {
+      let t = setInterval(() => {
+        if (!window.__skipGiftCheck) {
+          clearInterval(t);
+          resolve();
+        }
+      }, 50);
+    });
+
+  await waitForClear();
       ensureFreeGift();
     };
   }
