@@ -18,20 +18,23 @@ async function scheduleSync() {
     const cart = await getCart(true);
      console.log("⏳ 15s passed — Doing ONE-TIME sync:");
     console.log("🛒 Final Cart Token Sent:", cart.token);
-      if (!window.__CUSTOMER_ID__ && !window.__CUSTOMER_EMAIL__) {
-    console.warn("Customer not logged in — skipping sync.");
-    return;
-  }
+        // Always store values (null if missing)
+    const customerId = window.__CUSTOMER_ID__ || null;
+    const email = window.__CUSTOMER_EMAIL__ || null;
 
-   
+    console.log("📨 Sending sync payload:", {
+      cartToken: cart.token,
+      customerId,
+      email
+    });
 
       await fetch("/apps/optimaio-cart/synccustomer", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       cartToken: cart.token,
-      customerId: window.__CUSTOMER_ID__,
-      email: window.__CUSTOMER_EMAIL__
+       customerId,
+        email
     })
   });
 
