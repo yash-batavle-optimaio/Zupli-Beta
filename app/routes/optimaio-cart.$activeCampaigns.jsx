@@ -2,6 +2,9 @@
 import { authenticate } from "../shopify.server";
 import { createClient } from "redis";
 
+// -------------------------------
+// Redis (NO TOP-LEVEL AWAIT)
+// -------------------------------
 const redis = createClient({
   username: "default",
   password: "TAqxfnXDpLQv9QG64FZNRsdk6Daq0xrL",
@@ -12,9 +15,28 @@ const redis = createClient({
 });
 
 redis.on("error", (err) => console.error("Redis Error:", err));
-await redis.connect();
 
+let redisReady = null;
+
+// FIX: no top-level await, lazy connect
+function connectRedis() {
+  if (!redisReady) {
+    redisReady = redis.connect().catch((err) => {
+      redisReady = null;
+      throw err;
+    });
+  }
+  return redisReady;
+}
+
+async function getRedis() {
+  await connectRedis();
+  return redis;
+}
+
+// -------------------------------
 // Safe JSON parser
+// -------------------------------
 function safeJsonParse(str, fallback = {}) {
   if (!str || typeof str !== "string") return fallback;
   try {
@@ -27,56 +49,44 @@ function safeJsonParse(str, fallback = {}) {
 
 export const loader = async ({ request }) => {
   try {
-    // Authenticate Shopify App Proxy
+    // Authenticate
     const auth = await authenticate.public.appProxy(request);
     const { admin } = auth;
     let { shop } = auth;
 
-    // Extract shop from URL as fallback
+    // Fallback shop
     const url = new URL(request.url);
     const shopFromQuery = url.searchParams.get("shop");
-
-    if (!shop && shopFromQuery) {
-      shop = shopFromQuery;
-    }
+    if (!shop && shopFromQuery) shop = shopFromQuery;
 
     if (!shop) {
-      console.error("❌ SHOP IS STILL UNDEFINED. URL:", url.href);
-      return new Response(JSON.stringify({ error: "Missing shop parameter" }), {
+      console.error("❌ SHOP IS STILL UNDEFINED.");
+      return new Response(JSON.stringify({ error: "Missing shop" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
       });
     }
 
-    console.log("✔ Final shop value:", shop);
-
     if (!admin) {
-      return new Response(JSON.stringify({ error: "Unauthorized proxy" }), {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { "Content-Type": "application/json" },
       });
     }
 
     const redisKey = `campaigns:${shop}`;
 
-    console.log("📥 URL:", url.toString());
-    console.log("🔍 Searching Redis for:", redisKey);
-
-    // 1️⃣ Try Redis
-    const fromRedis = await redis.get(redisKey);
+    // GET Redis
+    const client = await getRedis();
+    const fromRedis = await client.get(redisKey);
 
     if (fromRedis) {
-      console.log("📤 Returning campaigns FROM REDIS");
       const redisObj = safeJsonParse(fromRedis, { data: {} });
-      const result = redisObj.data && typeof redisObj.data === "object" ? redisObj.data : {};
+      const result = redisObj.data || {};
       return new Response(JSON.stringify(result), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // 2️⃣ Fallback to Shopify
-    console.log("⚠️ Not found in Redis → Using Shopify metafield");
-
+    // Fallback to Shopify metafield
     const gql = await admin.graphql(`
       query {
         shop {
@@ -87,15 +97,16 @@ export const loader = async ({ request }) => {
       }
     `);
 
-    const data = await gql.json();
-    let metafieldValue = data?.data?.shop?.metafield?.value;
+    const json = await gql.json();
+    let metafieldValue = json?.data?.shop?.metafield?.value;
 
-    const badValues = [undefined, null, "", "undefined", "null"];
-    if (badValues.includes(metafieldValue)) metafieldValue = "{}";
+    const bad = [undefined, null, "null", "undefined", ""];
+    if (bad.includes(metafieldValue)) metafieldValue = "{}";
 
     const parsed = safeJsonParse(metafieldValue, {});
 
-    await redis.set(
+    // Save to Redis
+    await client.set(
       redisKey,
       JSON.stringify({
         data: parsed,
@@ -106,12 +117,11 @@ export const loader = async ({ request }) => {
     return new Response(JSON.stringify(parsed), {
       headers: { "Content-Type": "application/json" },
     });
-
   } catch (err) {
-    console.error("⚠️ Loader failed:", err);
-    return new Response(JSON.stringify({ error: "Server error", details: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Loader failed:", err);
+    return new Response(
+      JSON.stringify({ error: "Server error", details: err.message }),
+      { status: 500 }
+    );
   }
 };

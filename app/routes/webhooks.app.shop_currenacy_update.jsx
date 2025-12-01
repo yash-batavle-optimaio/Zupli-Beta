@@ -1,24 +1,8 @@
 import { authenticate } from "../shopify.server";
-import { createClient } from "redis";
 
-// -------------------------------
-//  Redis Client
-// -------------------------------
-const redis = createClient({
-  username: 'default',
-  password: 'TAqxfnXDpLQv9QG64FZNRsdk6Daq0xrL',
-  socket: {
-    host: 'redis-16663.crce179.ap-south-1-1.ec2.cloud.redislabs.com',
-    port: 16663
-  }
-});
-
-redis.on('error', err => console.log('Redis Client Error', err));
-await redis.connect();
-
-// -------------------------------
-//  Webhook Handler
-// -------------------------------
+/**
+ * Handles shop/update webhook — updates default money formats ONLY if changed
+ */
 export const action = async ({ request }) => {
   const { topic, admin, shop, session } = await authenticate.webhook(request);
 
@@ -27,19 +11,22 @@ export const action = async ({ request }) => {
     throw new Response("No session", { status: 401 });
   }
 
-  console.log(`📥 Received webhook '${topic}' for shop: ${shop}`);
+  console.log(`📥 Received webhook: ${topic} for ${shop}`);
 
   try {
-    // 1️⃣ FETCH metafield: optimaio_cart.campaigns
     const query = `
       {
         shop {
           id
-          metafield(namespace: "optimaio_cart", key: "campaigns") {
+          currencyCode
+          currencyFormats {
+            moneyFormat
+            moneyInEmailsFormat
+            moneyWithCurrencyFormat
+            moneyWithCurrencyInEmailsFormat
+          }
+          metafield(namespace: "optimaio_cart", key: "currencies") {
             id
-            namespace
-            key
-            type
             value
           }
         }
@@ -50,52 +37,76 @@ export const action = async ({ request }) => {
     const json = await res.json();
     const shopData = json?.data?.shop;
 
-    if (!shopData) {
-      console.error("❌ No shop data found");
-      throw new Error("Shop data unavailable");
+    if (!shopData) throw new Error("❌ Failed to load shop data");
+
+    const newValue = {
+      code: shopData.currencyCode,
+      formats: shopData.currencyFormats,
+    };
+
+    let existing = {};
+    if (shopData.metafield?.value) {
+      try {
+        existing = JSON.parse(shopData.metafield.value);
+      } catch (err) {
+        console.warn("⚠️ Failed to parse existing metafield JSON", err);
+      }
     }
 
-    const metafield = shopData.metafield;
+    const oldValue = existing.shopDefault || null;
 
-    // Shopify metafield value → JSON
-    let newCampaigns = null;
-    try {
-      newCampaigns = metafield?.value ? JSON.parse(metafield.value) : null;
-    } catch (err) {
-      console.error("⚠️ Failed to parse campaigns metafield JSON");
-    }
-
-    // 2️⃣ Get existing campaigns from Redis
-    const redisKey = `campaigns:${shop}`;
-    const oldValue = await redis.get(redisKey);
-    
-    let oldCampaigns = null;
-    try {
-      oldCampaigns = oldValue ? JSON.parse(oldValue) : null;
-    } catch (err) {
-      console.warn("⚠️ Failed to parse existing Redis campaign value");
-    }
-
-    // 3️⃣ CHANGE DETECTION
-    const isSame = JSON.stringify(oldCampaigns) === JSON.stringify(newCampaigns);
+    const isSame =
+      oldValue &&
+      oldValue.code === newValue.code &&
+      JSON.stringify(oldValue.formats) === JSON.stringify(newValue.formats);
 
     if (isSame) {
-      console.log("⏸ No campaign changes detected — skipping Redis update");
+      console.log("⏸ No currency/moneyFormat change — skipping metafield update");
       return new Response("no-change");
     }
 
-    // 4️⃣ Save new campaign data to Redis
-    console.log("🔄 Campaign metafield changed — updating Redis…");
+    console.log("🔄 Money format or currency changed — updating metafield…");
 
-    await redis.set(redisKey, JSON.stringify({
-      data: newCampaigns,
-      updatedAt: new Date().toISOString(),
-    }));
+    const mergedValue = {
+      ...existing,
+      shopDefault: {
+        ...newValue,
+        updatedAt: new Date().toISOString(),
+      },
+    };
 
-    console.log(`✅ Campaigns updated in Redis for ${shop}`);
+    const mutation = `
+      mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields { id namespace key type value updatedAt }
+          userErrors { field message }
+        }
+      }
+    `;
 
+    const variables = {
+      metafields: [
+        {
+          namespace: "optimaio_cart",
+          key: "currencies",
+          type: "json",
+          ownerId: shopData.id,
+          value: JSON.stringify(mergedValue),
+        },
+      ],
+    };
+
+    const saveRes = await admin.graphql(mutation, { variables });
+    const saveJson = await saveRes.json();
+
+    const errors = saveJson?.data?.metafieldsSet?.userErrors;
+    if (errors?.length) {
+      console.error("⚠️ Metafield save errors:", errors);
+    } else {
+      console.log(`✅ Saved updated shop moneyFormat for ${shop}`);
+    }
   } catch (err) {
-    console.error("🚨 Error updating campaigns:", err);
+    console.error("🚨 Error in shop/update handler:", err);
   }
 
   return new Response("ok");
