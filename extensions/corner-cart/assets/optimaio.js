@@ -1,6 +1,42 @@
 // --------------------------------------------------------------
 // PART 1 / 3 — Initialization + Helpers + Currency Extraction
 // --------------------------------------------------------------
+/* --------------------------------------------------------------
+   SAFE UNIVERSAL MONEY FORMATTER (Shopify-compatible)
+   Uses store’s actual currency format: window.__optimaioMoneyFormat
+-------------------------------------------------------------- */
+/* --------------------------------------------------------------
+   SAFE UNIVERSAL MONEY FORMATTER (Correct Shopify Behavior)
+-------------------------------------------------------------- */
+
+if (!window.Shopify) window.Shopify = {};
+
+if (!Shopify.formatMoney) {
+  Shopify.formatMoney = function(cents, format) {
+    if (!format) format = window.__optimaioMoneyFormat || "${{amount}}";
+
+    // Convert cents
+    if (typeof cents === "string") {
+      cents = cents.replace(/[^0-9]/g, "");
+    }
+    cents = parseInt(cents, 10);
+
+    // Always 2 decimals (Shopify standard)
+    let value = (cents / 100).toFixed(2);
+
+    // Add comma separators
+    let valueWithCommas = value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    // Replace Shopify tokens
+    return format
+      .replace("{{amount}}", valueWithCommas)
+      .replace("{{ amount }}", valueWithCommas)
+      .replace("{{amount_no_decimals}}", Math.round(cents / 100))
+      .replace("{{ amount_no_decimals }}", Math.round(cents / 100))
+      .replace("{{amount_with_comma_separator}}", valueWithCommas)
+      .replace("{{ amount_with_comma_separator }}", valueWithCommas);
+  };
+}
 
 (function () {
   if (window.OptimaioCartDrawerInit) return;
@@ -11,80 +47,51 @@
   -------------------------------------------------- */
 
   window.optimaioClearEffects = function () {
-    const CLS = ["overflow-hidden", "js-drawer-open", "menu-open", "lock-scroll", "no-scroll"];
-    CLS.forEach(cls => {
+    const CLS = [
+      "overflow-hidden",
+      "js-drawer-open",
+      "menu-open",
+      "lock-scroll",
+      "no-scroll",
+    ];
+    CLS.forEach((cls) => {
       document.documentElement.classList.remove(cls);
       document.body.classList.remove(cls);
     });
 
     const OVERLAYS = [
-      '#CartDrawer-Overlay', '.cart-drawer__overlay', '.drawer__overlay',
-      '.menu-drawer__overlay', '.modal__overlay', '.modal-overlay',
-      '.cart-notification__overlay', 'cart-notification', 'cart-drawer',
-      '.side-drawer__overlay', '.AjaxCart', '.ajaxcart', '.CartPopup'
+      "#CartDrawer-Overlay",
+      ".cart-drawer__overlay",
+      ".drawer__overlay",
+      ".menu-drawer__overlay",
+      ".modal__overlay",
+      ".modal-overlay",
+      ".cart-notification__overlay",
+      "cart-notification",
+      "cart-drawer",
+      ".side-drawer__overlay",
+      ".AjaxCart",
+      ".ajaxcart",
+      ".CartPopup",
     ];
 
-    OVERLAYS.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        el.classList.remove('active', 'open', 'is-active', 'visible', 'animate');
-        el.removeAttribute('open');
-        el.style.opacity = '';
-        el.style.visibility = '';
-        el.style.pointerEvents = '';
-        el.style.display = 'none';
+    OVERLAYS.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        el.classList.remove(
+          "active",
+          "open",
+          "is-active",
+          "visible",
+          "animate",
+        );
+        el.removeAttribute("open");
+        el.style.opacity = "";
+        el.style.visibility = "";
+        el.style.pointerEvents = "";
+        el.style.display = "none";
       });
     });
   };
-
-  function extractToken(format) {
-  const match = format.match(/{{\s*([^}]+?)\s*}}/);
-  return match ? match[1] : null;
-}
-
-function shopifyFallbackMoneyFormat(amountInCents) {
-  const format = window.__optimaioMoneyFormat || "{{amount}}";
-  const amount = (amountInCents / 100).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-  return format.replace("{{amount}}", amount)
-               .replace("{{amount_with_comma_separator}}", amount);
-}
-
-function formatOptimaioPrice(amountInCents) {
-  const data = window.__OPTIMAIO_CURRENCIES__;
-  const amount = amountInCents / 100;
-  const showDecimals = data?.showDecimals === "yes";
-  const currentCurrency =
-    Shopify?.currency?.active || data?.defaultCurrency || "INR";
-
-  const match = data?.currencies?.find(c => c.code === currentCurrency);
-  if (!match) return shopifyFallbackMoneyFormat(amountInCents);
-
-  let format = match.format || "{{amount}}";
-  const token = extractToken(format);
-
-  const dict = {
-    amount: amount.toLocaleString(undefined, {
-      minimumFractionDigits: showDecimals ? 2 : 0,
-      maximumFractionDigits: showDecimals ? 2 : 0
-    }),
-    amount_no_decimals: amount.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }),
-    amount_with_comma_separator: amount.toLocaleString("de-DE", {
-      minimumFractionDigits: showDecimals ? 2 : 0,
-      maximumFractionDigits: showDecimals ? 2 : 0
-    }),
-    amount_no_decimals_with_comma_separator: amount.toLocaleString("de-DE", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    })
-  };
-
-  return format.replace(`{{${token}}}`, dict[token] || amount.toLocaleString());
-}
 
   /* --------------------------------------------------
      MAIN CART DRAWER INITIALIZATION
@@ -93,6 +100,7 @@ function formatOptimaioPrice(amountInCents) {
   document.addEventListener("DOMContentLoaded", initDrawer);
   document.addEventListener("shopify:section:load", initDrawer);
 
+  
   function initDrawer() {
     const cornerCart = document.getElementById("optimaio-corner-cart");
     const drawer = document.getElementById("optimaio-cart-drawer");
@@ -110,14 +118,14 @@ function formatOptimaioPrice(amountInCents) {
 
     function setTab(tab) {
       drawer.setAttribute("data-active-tab", tab);
-      drawer.querySelectorAll(".optimaio-tab-btn").forEach(b =>
-        b.classList.toggle("active", b.dataset.target === tab)
-      );
+      drawer
+        .querySelectorAll(".optimaio-tab-btn")
+        .forEach((b) => b.classList.toggle("active", b.dataset.target === tab));
     }
 
     const footer = drawer.querySelector(".optimaio-cart-drawer__footer");
     if (footer) {
-      footer.addEventListener("click", e => {
+      footer.addEventListener("click", (e) => {
         const btn = e.target.closest(".optimaio-tab-btn");
         if (btn) setTab(btn.dataset.target);
       });
@@ -126,83 +134,114 @@ function formatOptimaioPrice(amountInCents) {
     setTab("cart");
 
     // --------------------------------------------------------------
-// PART 2 / 3 — Rendering Engine + Buttons + Placeholders
-// --------------------------------------------------------------
+    // PART 2 / 3 — Rendering Engine + Buttons + Placeholders
+    // --------------------------------------------------------------
 
     /* ------------------------------
        CART RENDERING SYSTEM
     ------------------------------ */
     function renderCart(cart) {
-      document.getElementById("optimaio-corner-cart-count").textContent = cart.item_count;
+      document.getElementById("optimaio-corner-cart-count").textContent =
+        cart.item_count;
 
       if (cart.item_count === 0) {
         itemsContainer.innerHTML = "";
         emptyState.style.display = "flex";
-        totalEl.textContent = `${currencySymbol}0`;
-        discountEl.textContent = `${currencySymbol}0`;
+        totalEl.textContent = Shopify.formatMoney(
+          0,
+          window.__optimaioMoneyFormat,
+        );
+        discountEl.textContent = Shopify.formatMoney(
+          0,
+          window.__optimaioMoneyFormat,
+        );
+
         document.querySelector(".optimaio-recommendations-list").innerHTML = "";
         return;
       }
 
       emptyState.style.display = "none";
 
-      const itemsHTML = cart.items.map(item => `
-        <div class="optimaio-cart-item-card ${item.properties?.isBXGYGift ? 'optimaio-free-gift' : ''}">
-          <div class="optimaio-cart-item__image"><img src="${item.image}" alt="${item.product_title}"></div>
-          <div class="optimaio-cart-item__info">
+    const itemsHTML = cart.items
+  .map(
+    (item) => `
+      <div class="optimaio-cart-item-card ${item.properties?.isBXGYGift ? "optimaio-free-gift" : ""}">
+        <div class="optimaio-cart-item__image">
+          <img src="${item.image}" alt="${item.product_title}">
+        </div>
 
-            <div class="optimaio-cart-item__top">
-              <p class="optimaio-cart-item__title">${item.product_title}</p>
-              <button class="optimaio-cart-item__remove" data-key="${item.key}">×</button>
-            </div>
+        <div class="optimaio-cart-item__info">
 
-            ${item.variant_title && item.variant_title !== "Default Title"
+          <div class="optimaio-cart-item__top">
+            <p class="optimaio-cart-item__title">${item.product_title}</p>
+            <button class="optimaio-cart-item__remove" data-key="${item.key}">×</button>
+          </div>
+
+          ${
+            item.variant_title && item.variant_title !== "Default Title"
               ? `<p class="optimaio-cart-item__variant">${item.variant_title}</p>`
-              : ""}
+              : ""
+          }
 
-            <div class="optimaio-cart-item__bottom">
-              <div class="optimaio-cart-item__actions">
-                <button class="optimaio-qty-btn" data-key="${item.key}" data-change="-1">−</button>
-                <span class="optimaio-cart-item__qty">${item.quantity}</span>
-                <button class="optimaio-qty-btn" data-key="${item.key}" data-change="1">+</button>
-              </div>
-
-              <div class="optimaio-cart-item__pricing">
-                ${item.original_line_price > item.final_line_price
-                  ? `<span class="optimaio-compare-at">${formatOptimaioPrice(item.original_line_price)}</span>`
-                  : ""}
-                <span class="optimaio-price">${formatOptimaioPrice(item.final_line_price)}</span>
-              </div>
+          <div class="optimaio-cart-item__bottom">
+            <div class="optimaio-cart-item__actions">
+              <button class="optimaio-qty-btn" data-key="${item.key}" data-change="-1">−</button>
+              <span class="optimaio-cart-item__qty">${item.quantity}</span>
+              <button class="optimaio-qty-btn" data-key="${item.key}" data-change="1">+</button>
             </div>
 
-            ${item.properties?.isBXGYGift
+            <div class="optimaio-cart-item__pricing">
+              ${
+                item.original_line_price > item.final_line_price
+                  ? `<span class="optimaio-compare-at">
+                      ${Shopify.formatMoney(item.original_line_price, window.__optimaioMoneyFormat)}
+                    </span>`
+                  : ""
+              }
+              <span class="optimaio-price">
+                ${Shopify.formatMoney(item.final_line_price, window.__optimaioMoneyFormat)}
+              </span>
+            </div>
+          </div>
+
+          ${
+            item.properties?.isBXGYGift
               ? `<div class="optimaio-cart-item__discount optimaio-free-gift-badge"><span>🎁 FREE GIFT</span></div>`
               : item.discounts?.length
                 ? `<div class="optimaio-cart-item__discount">
-                    ${item.discounts.map(d => `<span>${d.title}</span>`).join('<br>')}
+                    ${item.discounts.map((d) => `<span>${d.title}</span>`).join("<br>")}
                    </div>`
-                : ""}
-          </div>
+                : ""
+          }
+
         </div>
-      `).join("");
+      </div>
+    `
+  )
+  .join("");
 
 
       /* -------- FREE GIFT PLACEHOLDERS ---------- */
       let placeholdersHTML = "";
       if (window.__expectedFreeGifts) {
-        const realGiftIds = new Set(cart.items.filter(i => i.properties?.isBXGYGift).map(i => i.variant_id));
+        const realGiftIds = new Set(
+          cart.items
+            .filter((i) => i.properties?.isBXGYGift)
+            .map((i) => i.variant_id),
+        );
 
-        placeholdersHTML = Object.entries(window.__expectedFreeGifts).map(([gid, info]) => {
-          const vid = Number(gid.split("/").pop());
-          if (realGiftIds.has(vid)) return "";
+        placeholdersHTML = Object.entries(window.__expectedFreeGifts)
+          .map(([gid, info]) => {
+            const vid = Number(gid.split("/").pop());
+            if (realGiftIds.has(vid)) return "";
 
-          return `
+            return `
             <div class="optimaio-cart-item-card optimaio-free-gift optimaio-gift-placeholder" data-vid="${vid}">
-              <div class="optimaio-cart-item__image"><img src="${info.image || ''}"></div>
+              <div class="optimaio-cart-item__image"><img src="${info.image || ""}"></div>
 
               <div class="optimaio-cart-item__info">
                 <div class="optimaio-cart-item__top">
-                  <p class="optimaio-cart-item__title">${info.title || 'Free Gift'}</p>
+                  <p class="optimaio-cart-item__title">${info.title || "Free Gift"}</p>
                   <button disabled class="optimaio-cart-item__remove" style="opacity:.4;cursor:not-allowed;">×</button>
                 </div>
 
@@ -219,36 +258,54 @@ function formatOptimaioPrice(amountInCents) {
               </div>
             </div>
           `;
-        }).join("");
+          })
+          .join("");
       }
 
       /* ---- Soft-update placeholders if gift becomes real ---- */
-      cart.items.forEach(item => {
+      cart.items.forEach((item) => {
         if (item.properties?.isBXGYGift) {
           const ph = itemsContainer.querySelector(
-            `.optimaio-gift-placeholder[data-vid="${item.variant_id}"]`
+            `.optimaio-gift-placeholder[data-vid="${item.variant_id}"]`,
           );
           if (ph) {
             ph.classList.remove("optimaio-gift-placeholder");
             ph.querySelector(".optimaio-price").textContent =
-  formatOptimaioPrice(item.final_line_price);
+              Shopify.formatMoney(
+                item.final_line_price,
+                window.__optimaioMoneyFormat,
+              );
 
-            ph.querySelector(".optimaio-cart-item__qty").textContent = item.quantity;
+            ph.querySelector(".optimaio-cart-item__qty").textContent =
+              item.quantity;
           }
         }
       });
 
-      itemsContainer.innerHTML = placeholdersHTML + itemsHTML;
+// FINAL COMBINED HTML
+const finalHTML = `
+  ${placeholdersHTML}
+  ${itemsHTML}
+`;
 
-      totalEl.textContent = formatOptimaioPrice(cart.total_price);
+// RENDER INTO CART
+itemsContainer.innerHTML = finalHTML;
 
+      totalEl.textContent = Shopify.formatMoney(
+        cart.total_price,
+        window.__optimaioMoneyFormat,
+      );
       discountEl.textContent =
-  "-" + formatOptimaioPrice(cart.original_total_price - cart.total_price);
+        "-" +
+        Shopify.formatMoney(
+          cart.original_total_price - cart.total_price,
+          window.__optimaioMoneyFormat,
+        );
 
       if (cart.items.length) loadRecs(cart.items[0].product_id);
       bindItemButtons();
 
-      if (cart.items.some(i => i.properties?.isBXGYGift)) {
+      if (cart.items.some((i) => i.properties?.isBXGYGift)) {
         window.__expectedFreeGifts = {};
       }
     }
@@ -260,7 +317,6 @@ function formatOptimaioPrice(amountInCents) {
 
     window.getCartAndRender = getCart;
 
-
     /* ------------------------------
        REFRESH EVENTS
     ------------------------------ */
@@ -271,16 +327,17 @@ function formatOptimaioPrice(amountInCents) {
       refreshTimeout = setTimeout(() => getCart(), 300);
     });
 
-
     /* ------------------------------
        QTY + REMOVE BUTTONS
     ------------------------------ */
     function bindItemButtons() {
-      itemsContainer.querySelectorAll(".optimaio-qty-btn").forEach(btn => {
+      itemsContainer.querySelectorAll(".optimaio-qty-btn").forEach((btn) => {
         btn.onclick = async () => {
           const key = btn.dataset.key;
           const delta = parseInt(btn.dataset.change);
-          const qtyEl = btn.parentElement.querySelector(".optimaio-cart-item__qty");
+          const qtyEl = btn.parentElement.querySelector(
+            ".optimaio-cart-item__qty",
+          );
           const newQty = Math.max(1, parseInt(qtyEl.textContent) + delta);
 
           btn.disabled = true;
@@ -288,50 +345,56 @@ function formatOptimaioPrice(amountInCents) {
           await fetch("/cart/change.js", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: key, quantity: newQty })
+            body: JSON.stringify({ id: key, quantity: newQty }),
           })
-            .then(res => res.json().catch(() => getCart()))
-            .then(cart => renderCart(cart))
-            .finally(() => btn.disabled = false);
+            .then((res) => res.json().catch(() => getCart()))
+            .then((cart) => renderCart(cart))
+            .finally(() => (btn.disabled = false));
         };
       });
 
-      itemsContainer.querySelectorAll(".optimaio-cart-item__remove").forEach(btn => {
-        btn.onclick = async () => {
-          btn.disabled = true;
+      itemsContainer
+        .querySelectorAll(".optimaio-cart-item__remove")
+        .forEach((btn) => {
+          btn.onclick = async () => {
+            btn.disabled = true;
 
-          await fetch("/cart/change.js", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: btn.dataset.key, quantity: 0 })
-          })
-            .then(res => res.json())
-            .then(cart => renderCart(cart))
-            .finally(() => btn.disabled = false);
-        };
-      });
+            await fetch("/cart/change.js", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: btn.dataset.key, quantity: 0 }),
+            })
+              .then((res) => res.json())
+              .then((cart) => renderCart(cart))
+              .finally(() => (btn.disabled = false));
+          };
+        });
     }
 
     // --------------------------------------------------------------
-// PART 3 / 3 — Recommendations + ATC Interceptor + Observers
-// --------------------------------------------------------------
+    // PART 3 / 3 — Recommendations + ATC Interceptor + Observers
+    // --------------------------------------------------------------
 
     /* ------------------------------
        PRODUCT RECOMMENDATIONS
     ------------------------------ */
     async function loadRecs(productId) {
       const res = await fetch(
-        `/recommendations/products.json?product_id=${productId}&intent=complementary&limit=4`
+        `/recommendations/products.json?product_id=${productId}&intent=complementary&limit=4`,
       );
       const data = await res.json();
-      const container = document.querySelector(".optimaio-recommendations-list");
+      const container = document.querySelector(
+        ".optimaio-recommendations-list",
+      );
 
       if (!data.products.length) {
         container.innerHTML = "";
         return;
       }
 
-      container.innerHTML = data.products.map(p => `
+      container.innerHTML = data.products
+        .map(
+          (p) => `
         <div class="optimaio-recommendation-card">
           <div class="optimaio-rec-image">
             <img src="${p.featured_image}" alt="${p.title}">
@@ -340,7 +403,8 @@ function formatOptimaioPrice(amountInCents) {
           <div class="optimaio-rec-content">
             <p class="optimaio-rec-title">${p.title}</p>
             <p class="optimaio-rec-price">
-              ${formatOptimaioPrice(p.variants[0].price)}
+              ${Shopify.formatMoney(p.variants[0].price, window.__optimaioMoneyFormat)}
+
 
             </p>
           </div>
@@ -349,19 +413,21 @@ function formatOptimaioPrice(amountInCents) {
             Add
           </button>
         </div>
-      `).join("");
+      `,
+        )
+        .join("");
 
-      container.querySelectorAll(".optimaio-rec-add").forEach(btn => {
+      container.querySelectorAll(".optimaio-rec-add").forEach((btn) => {
         btn.onclick = async () => {
           btn.disabled = true;
 
           await fetch("/cart/add.js", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: btn.dataset.id, quantity: 1 })
+            body: JSON.stringify({ id: btn.dataset.id, quantity: 1 }),
           })
-          .then(() => getCart())
-          .finally(() => btn.disabled = false);
+            .then(() => getCart())
+            .finally(() => (btn.disabled = false));
         };
       });
     }
@@ -383,23 +449,26 @@ function formatOptimaioPrice(amountInCents) {
     cornerCart.addEventListener("click", openDrawer);
     closeBtn.addEventListener("click", closeDrawer);
 
-    window.addEventListener("keydown", e => {
+    window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeDrawer();
     });
-
 
     /* ------------------------------
        BIND CART TRIGGERS
     ------------------------------ */
     function bindCartTriggers() {
       const selectors = [
-        '#cart-icon-bubble', '.header__icon--cart', 'a[href="/cart"]',
-        'button[data-action="open-cart"]', '[aria-controls*="cart"]',
-        '[data-cart-toggle]', '[data-cart-trigger]',
-        '[data-drawer-target="cart-drawer"]'
+        "#cart-icon-bubble",
+        ".header__icon--cart",
+        'a[href="/cart"]',
+        'button[data-action="open-cart"]',
+        '[aria-controls*="cart"]',
+        "[data-cart-toggle]",
+        "[data-cart-trigger]",
+        '[data-drawer-target="cart-drawer"]',
       ];
 
-      document.querySelectorAll(selectors.join(',')).forEach(trigger => {
+      document.querySelectorAll(selectors.join(",")).forEach((trigger) => {
         if (trigger.dataset.optimaioBound) return;
 
         trigger.dataset.optimaioBound = "true";
@@ -414,7 +483,6 @@ function formatOptimaioPrice(amountInCents) {
     bindCartTriggers();
     setTimeout(bindCartTriggers, 1500);
 
-
     /* ------------------------------
        MUTATION OBSERVER
     ------------------------------ */
@@ -423,8 +491,6 @@ function formatOptimaioPrice(amountInCents) {
 
     getCart();
   }
-
-
 
   /* ---------------------------------------------------------
        UNIVERSAL ATC INTERCEPTOR
@@ -450,19 +516,26 @@ function formatOptimaioPrice(amountInCents) {
     if (!form || form.dataset.optimaioBound) return;
     form.dataset.optimaioBound = "true";
 
-    form.addEventListener("submit", function (evt) {
-      evt.preventDefault();
-      evt.stopPropagation();
+    form.addEventListener(
+      "submit",
+      function (evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
 
-      const fd = new FormData(form);
+        const fd = new FormData(form);
 
-      fetch("/cart/add.js", { method: "POST", body: fd })
-        .then(() => openDrawerATC());
-    }, true);
+        fetch("/cart/add.js", { method: "POST", body: fd }).then(() =>
+          openDrawerATC(),
+        );
+      },
+      true,
+    );
   }
 
   function bindProductForms() {
-    document.querySelectorAll('form[action*="cart/add"]').forEach(interceptProductForm);
+    document
+      .querySelectorAll('form[action*="cart/add"]')
+      .forEach(interceptProductForm);
   }
 
   /* ------------------------------
@@ -472,24 +545,31 @@ function formatOptimaioPrice(amountInCents) {
     if (!btn || btn.dataset.optimaioATC) return;
     btn.dataset.optimaioATC = "true";
 
-    btn.addEventListener("click", (e) => {
-      const form = btn.closest("form");
-      if (!form) return;
+    btn.addEventListener(
+      "click",
+      (e) => {
+        const form = btn.closest("form");
+        if (!form) return;
 
-      e.preventDefault();
-      e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
 
-      const fd = new FormData(form);
+        const fd = new FormData(form);
 
-      fetch("/cart/add.js", { method: "POST", body: fd })
-        .then(() => openDrawerATC());
-    }, true);
+        fetch("/cart/add.js", { method: "POST", body: fd }).then(() =>
+          openDrawerATC(),
+        );
+      },
+      true,
+    );
   }
 
   function bindATCButtons() {
-    document.querySelectorAll(
-      'button[name="add"], .product-form__submit, [data-add-to-cart], .quick-add__submit'
-    ).forEach(interceptATCButton);
+    document
+      .querySelectorAll(
+        'button[name="add"], .product-form__submit, [data-add-to-cart], .quick-add__submit',
+      )
+      .forEach(interceptATCButton);
   }
 
   /* ------------------------------
@@ -508,10 +588,14 @@ function formatOptimaioPrice(amountInCents) {
 
   function bindCartLinks() {
     const selectors = [
-      'a[href="/cart"]', '#cart-icon-bubble', '.header__icon--cart',
-      '[data-action="open-cart"]', '[aria-controls*="cart"]',
-      '[data-cart-toggle]', '[data-cart-trigger]',
-      '[data-drawer-target="cart-drawer"]'
+      'a[href="/cart"]',
+      "#cart-icon-bubble",
+      ".header__icon--cart",
+      '[data-action="open-cart"]',
+      '[aria-controls*="cart"]',
+      "[data-cart-toggle]",
+      "[data-cart-trigger]",
+      '[data-drawer-target="cart-drawer"]',
     ];
 
     document.querySelectorAll(selectors.join(",")).forEach(interceptCartLinks);
@@ -536,5 +620,4 @@ function formatOptimaioPrice(amountInCents) {
     bindProductForms();
     bindCartLinks();
   });
-
 })();

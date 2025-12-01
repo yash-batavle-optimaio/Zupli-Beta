@@ -14,8 +14,6 @@ import {
   Tooltip,
   Select,
   TextField,
-  RangeSlider,
-  ProgressBar,
   BlockStack,
   Layout,
   Divider,
@@ -27,7 +25,6 @@ import { authenticate } from "../shopify.server";
 import {
   DeleteIcon,
   PlusIcon,
-
   CaretDownIcon,
   CaretUpIcon,
   DiscountIcon,
@@ -51,12 +48,9 @@ export const loader = async ({ request }) => {
 };
 
 export default function CampaignIndexTable() {
-  // ------------------------------------------------------------------
-  // STATE
-  // ------------------------------------------------------------------
+
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [editingCampaign, setEditingCampaign] = useState(null);
 
   // "cart" | "quantity"
@@ -67,8 +61,6 @@ export default function CampaignIndexTable() {
 
   // popover for "Add a new goal"
   const [active, setActive] = useState(false);
-
-  
 
   // Gift product picker modal
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -84,7 +76,6 @@ export default function CampaignIndexTable() {
   const [status, setStatus] = useState("draft");
   const [name, setName] = useState("Cart Goal 6");
 
-
   // SaveBar state
   const [saveBarOpen, setSaveBarOpen] = useState(false);
   const [initialSnapshot, setInitialSnapshot] = useState(null);
@@ -95,7 +86,6 @@ export default function CampaignIndexTable() {
   const [content, setContent] = useState({ title: "", subtitle: "" });
 
   const [activeContentGoal, setActiveContentGoal] = useState(null);
-
 
   // Inside CampaignIndexTable component
   const [activeDates, setActiveDates] = useState({
@@ -108,29 +98,29 @@ export default function CampaignIndexTable() {
 const [tieredErrors, setTieredErrors] = useState({}); // { [goalId]: { target, products, giftQty, discountValue, discountType } }
 const [tieredGeneralErrors, setTieredGeneralErrors] = useState([]); // e.g., ["Add at least one goal"]
 
-
   const [bxgyErrors, setBxgyErrors] = useState({});
 
   const [nameError, setNameError] = useState("");
 
-  const [defaultCurrency, setDefaultCurrency] = useState("INR");
+  const [defaultCurrency, setDefaultCurrency] = useState("Amt");
 
   useEffect(() => {
   async function fetchDefaultCurrency() {
-    try {
-      const res = await fetch("/api/get-currencies");
+        try {
+      const res = await fetch("/api/get-shopDefaultCurrency");
       const data = await res.json();
-      if (data.ok && data.defaultCurrency) {
-        setDefaultCurrency(data.defaultCurrency);
+      console.log("💱 Shop currency:", data);
+
+      if (data.ok && data.currencyCode) {
+        setDefaultCurrency(data.currencyCode);
       }
     } catch (err) {
-      console.error("⚠️ Could not load default currency:", err);
+      console.error("⚠️ Failed to load currency:", err);
     }
   }
 
   fetchDefaultCurrency();
 }, []);
-
 
   function validateTiered(goals = [], trackType = "cart") {
   const perGoal = {}; // { [id]: { field: "error" } }
@@ -189,9 +179,6 @@ const [tieredGeneralErrors, setTieredGeneralErrors] = useState([]); // e.g., ["A
     if (Object.keys(errs).length) perGoal[g.id] = errs;
   });
 
-
-  
-
  // 📈 Global ascending check
   if (targets.length > 1) {
     // Sort by user-defined order (not automatically by value)
@@ -223,7 +210,6 @@ const [tieredGeneralErrors, setTieredGeneralErrors] = useState([]); // e.g., ["A
 
   return { perGoal, general };
 }
-
 
 const validateBxgy = (goal) => {
   const errors = {};
@@ -275,12 +261,9 @@ const validateBxgy = (goal) => {
     //   errors.discountValue = "Free product implies 100% off";
     // }
   }
-
-
   return errors;
 };
 
-  // ------------------------------------------------------------------
   // LOAD CAMPAIGNS FROM METAFIELD
   // ------------------------------------------------------------------
   useEffect(() => {
@@ -305,7 +288,6 @@ const validateBxgy = (goal) => {
 
     fetchCampaigns();
   }, []);
-
 
   // Define default structure once at top (or in a separate constants file)
 const defaultContent = {

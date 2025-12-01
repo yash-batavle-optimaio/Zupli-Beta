@@ -1,5 +1,6 @@
 <div id="optimaio-progress-container"></div>
 
+
 <style>
 #optimaio-progress-container {
   padding: 10px 0 20px;
@@ -53,7 +54,7 @@
 .optimaio-milestone-label {
   font-size: 11px;
   font-weight: bold;
-  white-space: nowrap;
+  line-height: normal;
 }
 #optimaio-progress-container .optimaio-progress-fill {
   background: #000 !important;
@@ -61,30 +62,71 @@
 }
 </style>
 
+
 <script>
 (() => {
   if (window.__OptimaioProMilestonesInit) return;
   window.__OptimaioProMilestonesInit = true;
 
-  let cache = null, cacheTime = 0;
-  const CACHE_TIME = 120000;
 
-  async function fetchCampaign() {
-    const now = Date.now();
-    if (cache && now - cacheTime < CACHE_TIME) return cache;
+  {% comment %} let cache = null, cacheTime = 0;
+  const CACHE_TIME = 120000; {% endcomment %}
 
-      console.log("Fetching Optimaio campaign data in progress bar...");
-    const res = await fetch("/apps/optimaio-cart/campaigns", { cache: "no-store" });
-    cache = await res.json();
-    cacheTime = now;
-    return cache;
+
+  function fillTemplate(str, vars) {
+    return str.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
   }
 
+
+  async function fetchCampaign() {
+  const start = performance.now();
+
+
+  try {
+    const res = await fetch("/apps/optimaio-cart/activeCampaigns", { cache: "no-store" });
+    const data = await res.json();
+
+
+    const end = performance.now();
+    console.log(`⚡ Campaign fetch time: ${Math.round(end - start)} ms`);
+
+
+    return data;
+  } catch (err) {
+    const end = performance.now();
+    console.warn(`⚠️ Campaign fetch failed after ${Math.round(end - start)} ms`, err);
+    return null;
+  }
+}
+
+
+
   function extractSteps(data) {
-    const active = data.campaigns?.find(c => c.status === "active");
+    
+  // 1️⃣ Filter ONLY tiered / cart-goal campaigns (NOT bxgy)
+  const tieredCampaigns = data.campaigns
+    .filter(c =>
+      c.status === "active" &&
+      c.campaignType === "tiered" &&           // ignore bxgy
+      Array.isArray(c.goals) &&
+      c.goals.length > 0
+    );
+
+
+  // 2️⃣ No valid tiered campaigns → no progress bar
+  if (tieredCampaigns.length === 0) return null;
+
+
+  // 3️⃣ Pick the highest priority (lowest number)
+  tieredCampaigns.sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+
+
+  const active = tieredCampaigns[0]; // the winning campaign
     if (!active || !active.goals || active.goals.length === 0) return null;
 
+
     const content = active.content || {};
+
 
     function ordinal(n) {
       if (n === 1) return "1st";
@@ -93,6 +135,7 @@
       return n + "th";
     }
 
+
     const steps = active.goals
       .filter(g => Number(g.target) > 0)
       .sort((a, b) => a.target - b.target)
@@ -100,11 +143,13 @@
         const goalKey = `${ordinal(index + 1)} goal`;
         const goalContent = content[goalKey] || {};
 
+
         const defaultLabel =
           g.type === "free_shipping" ? "Free Shipping" :
           g.type === "order_discount" ? `${g.discountValue}% Off` :
           g.type === "free_product" ? "Free Gift" :
           "Reward";
+
 
         return {
           threshold: Number(g.target),
@@ -114,8 +159,10 @@
         };
       });
 
+
     return { steps, trackType: active.trackType, content };
   }
+
 
   function renderUI(container, config) {
     container.innerHTML = `
@@ -133,33 +180,90 @@
       </div>
     `;
 
+
     if (!config.steps?.length) return;
     const maxT = config.steps.at(-1)?.threshold;
     if (!maxT) return;
 
+
     document.querySelectorAll(".optimaio-milestone").forEach((m, i) => {
-      const pct = (config.steps[i].threshold / maxT) * 100;
-      m.style.left = pct + "%";
-    });
+  const total = config.steps.length;
+  const pct = ((i + 1) / total) * 100;
+  m.style.left = pct + "%";
+});
+
+
   }
+
 
   async function updateProgress(cart, config) {
     if (!config || !config.steps?.length) return;
+
 
     const fill = document.querySelector(".optimaio-progress-fill");
     const msg = document.querySelector(".optimaio-progress-message");
     const milestones = document.querySelectorAll(".optimaio-milestone");
 
+
     if (!fill || !msg || milestones.length === 0) return;
+
+
+    // Hide progress bar if cart is empty
+const container = document.getElementById("optimaio-progress-container");
+
+
+if (cart.items.length === 0) {
+  container.style.display = "none";
+  return;
+} else {
+  container.style.display = "block";
+}
+
+
 
     const subtotal = cart.items.reduce((t, i) => t + i.final_line_price, 0) / 100;
     const qty = cart.items.reduce((t, i) => t + i.quantity, 0);
     const value = config.trackType === "quantity" ? qty : subtotal;
 
+
     const maxT = config.steps.at(-1)?.threshold;
     if (!maxT) return;
 
-    fill.style.width = Math.min((value / maxT) * 100, 100) + "%";
+
+    // Equally spaced milestone positions
+const total = config.steps.length;
+const positions = config.steps.map((s, i) => ((i + 1) / total) * 100);
+
+
+// Thresholds array
+const thresholds = config.steps.map(s => s.threshold);
+
+
+// Find active milestone index
+let idx = thresholds.findIndex(t => value < t);
+if (idx === -1) {
+  // All reached
+  fill.style.width = "100%";
+} else if (idx === 0) {
+  // Before first milestone
+  const pct = (value / thresholds[0]) * (positions[0]);
+  fill.style.width = pct + "%";
+} else {
+  // Between milestones
+  const prevT = thresholds[idx - 1];
+  const nextT = thresholds[idx];
+  const prevP = positions[idx - 1];
+  const nextP = positions[idx];
+
+
+  const range = (value - prevT) / (nextT - prevT);
+  const pct = prevP + range * (nextP - prevP);
+
+
+  fill.style.width = pct + "%";
+}
+
+
 
     config.steps.forEach((s, i) => {
       const isActive = value >= s.threshold;
@@ -168,47 +272,88 @@
         isActive ? s.afterLabel : s.beforeLabel;
     });
 
+
     const next = config.steps.find(s => value < s.threshold);
+
 
     if (!next) {
       msg.textContent = config.content.progressTextAfter || "You have unlocked all rewards!";
       return;
     }
 
+
     const remain = next.threshold - value;
-    const prefix = config.content.progressTextBefore || "";
+
+
+    /** ⭐ DYNAMIC MESSAGE FIX STARTS HERE ⭐ **/
+
+
+    const nextIndex = config.steps.indexOf(next);
+    const ordinalKey =
+      nextIndex === 0 ? "1st goal" :
+      nextIndex === 1 ? "2nd goal" :
+      nextIndex === 2 ? "3rd goal" :
+      `${nextIndex + 1}th goal`;
+
+
+    const dynamicBefore =
+      config.content?.[ordinalKey]?.progressTextBefore?.trim() || "";
+
+
+    const remainValue =
+      config.trackType === "quantity" ? remain : remain.toFixed(2);
+
+
+    if (dynamicBefore) {
+      msg.textContent = fillTemplate(dynamicBefore, { remain: remainValue });
+      return;
+    }
+
+
+    /** ⭐ DEFAULT MESSAGE (Fallback) ⭐ **/
+
 
     msg.textContent =
-      prefix
-        ? `${prefix} ${next.beforeLabel}`
-        : (config.trackType === "quantity"
-            ? `Add ${remain} more items to unlock ${next.beforeLabel}`
-            : `Spend ₹${remain.toFixed(2)} more to unlock ${next.beforeLabel}`);
+      config.trackType === "quantity"
+        ? `Add ${remain} more items to unlock ${next.beforeLabel}`
+        : `Spend ₹${remain.toFixed(2)} more to unlock ${next.beforeLabel}`;
+
+
+    /** ⭐ DYNAMIC MESSAGE FIX ENDS HERE ⭐ **/
   }
+
 
   document.addEventListener("optimaio:cart:refresh", async () => {
     const data = await fetchCampaign();
     const config = extractSteps(data);
     if (!config || !config.steps?.length) return;
 
+
     const cart = await fetch("/cart.js").then(r => r.json());
     updateProgress(cart, config);
   });
+
 
   (async function init() {
     const container = document.getElementById("optimaio-progress-container");
     const data = await fetchCampaign();
     const config = extractSteps(data);
 
+
     if (!config || !config.steps?.length) {
       container.style.display = "none";
       return;
     }
 
+
     renderUI(container, config);
+
 
     const cart = await fetch("/cart.js").then(r => r.json());
     updateProgress(cart, config);
   })();
 })();
 </script>
+
+
+

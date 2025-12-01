@@ -12,6 +12,10 @@ automatically_update_urls_on_dev = true
 api_version = "2025-10"
 
   [[webhooks.subscriptions]]
+  topics = [ "shop/update" ]
+  uri = "/webhooks/app/shop_currenacy_update"
+
+  [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
