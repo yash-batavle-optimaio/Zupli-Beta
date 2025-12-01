@@ -1,8 +1,40 @@
 import { authenticate } from "../shopify.server";
+import { createClient } from "redis";
 
-/**
- * Handles shop/update webhook — updates default money formats ONLY if changed
- */
+// -------------------------------
+// Redis (NO TOP-LEVEL AWAIT)
+// -------------------------------
+const redis = createClient({
+  username: "default",
+  password: "TAqxfnXDpLQv9QG64FZNRsdk6Daq0xrL",
+  socket: {
+    host: "redis-16663.crce179.ap-south-1-1.ec2.cloud.redislabs.com",
+    port: 16663,
+  },
+});
+
+redis.on("error", (err) => console.error("Redis Error:", err));
+
+let redisReady = null;
+
+function connectRedis() {
+  if (!redisReady) {
+    redisReady = redis.connect().catch((err) => {
+      redisReady = null;
+      throw err;
+    });
+  }
+  return redisReady;
+}
+
+async function getRedis() {
+  await connectRedis();
+  return redis;
+}
+
+// -------------------------------
+// Webhook logic
+// -------------------------------
 export const action = async ({ request }) => {
   const { topic, admin, shop, session } = await authenticate.webhook(request);
 
@@ -105,6 +137,27 @@ export const action = async ({ request }) => {
     } else {
       console.log(`✅ Saved updated shop moneyFormat for ${shop}`);
     }
+
+    // -----------------------------------------
+    // 🟢 NEW: Save updated currency to Redis
+    // -----------------------------------------
+    try {
+      const client = await getRedis();
+      const redisKey = `currencies:${shop}`;
+
+      await client.set(
+        redisKey,
+        JSON.stringify({
+          data: mergedValue,
+          updatedAt: new Date().toISOString(),
+        })
+      );
+
+      console.log(`🟢 Redis updated for ${shop} → ${redisKey}`);
+    } catch (redisErr) {
+      console.error("🚨 Failed to update Redis:", redisErr);
+    }
+
   } catch (err) {
     console.error("🚨 Error in shop/update handler:", err);
   }
