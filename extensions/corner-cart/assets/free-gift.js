@@ -68,8 +68,14 @@ async function parseCampaignData() {
 
 
   try {
-    const res = await fetch("/apps/optimaio-cart/activeCampaigns", { cache: "no-store" });
-    const data = await res.json();
+ const url = `https://remix-app-rqyv.onrender.com/campaign.js?shop=${window.__SHOP_DOMAIN__}`;
+  console.log("free Fetching live campaign:", url);
+
+  const res = await fetch(url, { cache: "no-store" });
+  const dataRes = await res.json();
+  const data = dataRes.campaigns;
+
+  console.log("free DATA:", data.campaigns);
 
 
     const end = performance.now(); // ⏱️ END TIMER

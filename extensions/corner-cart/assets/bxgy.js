@@ -63,8 +63,14 @@
 
 
   try {
-    const res = await fetch("/apps/optimaio-cart/activeCampaigns", { cache: "no-store" });
-    const data = await res.json();
+  const url = `https://remix-app-rqyv.onrender.com/campaign.js?shop=${window.__SHOP_DOMAIN__}`;
+  console.log("bxgy Fetching live campaign:", url);
+
+  const res = await fetch(url, { cache: "no-store" });
+  const dataRes = await res.json();
+  const data = dataRes.campaigns;
+
+  console.log("bxgy DATA:", data);
 
 
     const endTime = performance.now();   // ⏱️ END TIMER

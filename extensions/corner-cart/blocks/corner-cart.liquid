@@ -3,6 +3,56 @@
   window.__CUSTOMER_ID__ = "{{ customer.id | default: '' }}";
 window.__CUSTOMER_EMAIL__ = "{{ customer.email | default: '' }}";
 </script>
+{% comment %} <script src="https://releases-reconstruction-port-between.trycloudflare.com/campaign.js?shop={{ shop.permanent_domain }}"></script> {% endcomment %}
+<script>
+window.__SHOP_DOMAIN__ = "{{ shop.permanent_domain }}";
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("Loaded campaign:", window.DYNAMIC_CAMPAIGN);
+    console.log("Shop id:", "{{ shop.permanent_domain }}");
+window.__SHOP_DOMAIN__ = "{{ shop.permanent_domain }}";
+
+  });
+</script> 
+
+{% comment %} <script>
+window.__OPTIMIAO_CAMPAIGN_CACHE__ = { data: null, time: 0, pending: null };
+
+async function getCampaignDataCached() {
+  const now = Date.now();
+
+  // prevent multiple parallel fetches
+  if (window.__OPTIMIAO_CAMPAIGN_CACHE__.pending) {
+    return window.__OPTIMIAO_CAMPAIGN_CACHE__.pending;
+  }
+
+  // 30 sec cache (ENABLE THIS — you can lower to 5s for testing)
+  if (window.__OPTIMIAO_CAMPAIGN_CACHE__.data &&
+      now - window.__OPTIMIAO_CAMPAIGN_CACHE__.time < 5000) {
+    return window.__OPTIMIAO_CAMPAIGN_CACHE__.data;
+  }
+
+  // Start a SINGLE fetch
+  window.__OPTIMIAO_CAMPAIGN_CACHE__.pending = fetch("/apps/optimaio-cart/activeCampaigns", {
+    cache: "no-store",
+  })
+    .then(r => r.json())
+    .then(data => {
+      window.__OPTIMIAO_CAMPAIGN_CACHE__.data = data;
+      window.__OPTIMIAO_CAMPAIGN_CACHE__.time = Date.now();
+      window.__OPTIMIAO_CAMPAIGN_CACHE__.pending = null;
+      return data;
+    })
+    .catch(err => {
+      window.__OPTIMIAO_CAMPAIGN_CACHE__.pending = null;
+      throw err;
+    });
+
+  return window.__OPTIMIAO_CAMPAIGN_CACHE__.pending;
+}
+</script> {% endcomment %}
+
 
 
 
