@@ -4,8 +4,8 @@ import { createClient } from "redis";
 // -------------------------------
 //  Redis Client (NO TOP-LEVEL AWAIT)
 // -------------------------------
-const client = createClient({
-  username: "default",
+const redis = createClient({
+ username: "default",
   password: "WeBH2vGxisQX0AL91o96tE3sM5srmISI",
   socket: {
     host: "redis-10630.crce199.us-west-2-2.ec2.cloud.redislabs.com",
@@ -39,10 +39,7 @@ export const action = async ({ request }) => {
   const { topic, admin, shop, session } = await authenticate.webhook(request);
 
   if (!session) {
-    console.warn(
-      "⚠️ No active session found — possibly uninstalled shop:",
-      shop,
-    );
+    console.warn("⚠️ No active session found — possibly uninstalled shop:", shop);
     throw new Response("No session", { status: 401 });
   }
 
@@ -97,8 +94,7 @@ export const action = async ({ request }) => {
     }
 
     // 3️⃣ CHANGE DETECTION
-    const isSame =
-      JSON.stringify(oldCampaigns) === JSON.stringify(newCampaigns);
+    const isSame = JSON.stringify(oldCampaigns) === JSON.stringify(newCampaigns);
 
     if (isSame) {
       console.log("⏸ No campaign changes detected — skipping Redis update");
@@ -113,7 +109,7 @@ export const action = async ({ request }) => {
       JSON.stringify({
         data: newCampaigns,
         updatedAt: new Date().toISOString(),
-      }),
+      })
     );
 
     console.log(`✅ Campaigns updated in Redis for ${shop}`);
