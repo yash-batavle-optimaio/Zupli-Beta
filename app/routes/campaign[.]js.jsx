@@ -4,10 +4,10 @@ import { createClient } from "redis";
 // REDIS CLIENT
 const redis = createClient({
   username: "default",
-  password: "TAqxfnXDpLQv9QG64FZNRsdk6Daq0xrL",
+  password: "WeBH2vGxisQX0AL91o96tE3sM5srmISI",
   socket: {
-    host: "redis-16663.crce179.ap-south-1-1.ec2.cloud.redislabs.com",
-    port: 16663,
+    host: "redis-10630.crce199.us-west-2-2.ec2.cloud.redislabs.com",
+    port: 10630,
   },
 });
 
@@ -19,13 +19,18 @@ function connectRedis() {
     const t0 = performance.now();
     console.log("🔄 Connecting to Redis...");
 
-    redisReady = redis.connect().then(() => {
-      console.log(`🟢 Redis connected in ${Math.round(performance.now() - t0)} ms`);
-    }).catch((err) => {
-      redisReady = null;
-      console.error("❌ Redis connection failed:", err);
-      throw err;
-    });
+    redisReady = redis
+      .connect()
+      .then(() => {
+        console.log(
+          `🟢 Redis connected in ${Math.round(performance.now() - t0)} ms`,
+        );
+      })
+      .catch((err) => {
+        redisReady = null;
+        console.error("❌ Redis connection failed:", err);
+        throw err;
+      });
   }
   return redisReady;
 }
@@ -76,9 +81,10 @@ export async function loader({ request }) {
 
     raw = await client.get(redisKey);
 
-    console.log(`🔵 Redis GET completed in ${Math.round(performance.now() - T_GET)} ms`);
+    console.log(
+      `🔵 Redis GET completed in ${Math.round(performance.now() - T_GET)} ms`,
+    );
     console.log("🔵 Raw Redis Value:", raw?.slice(0, 200) || "null");
-
   } catch (err) {
     console.error("❌ Redis GET failed:", err);
   }
@@ -91,7 +97,9 @@ export async function loader({ request }) {
 
   try {
     parsed = raw ? JSON.parse(raw) : null;
-    console.log(`🟣 JSON parse time: ${Math.round(performance.now() - T_PARSE)} ms`);
+    console.log(
+      `🟣 JSON parse time: ${Math.round(performance.now() - T_PARSE)} ms`,
+    );
   } catch (err) {
     console.error("❌ JSON Parse error:", err);
     parsed = null;
@@ -113,17 +121,19 @@ export async function loader({ request }) {
   // RETURN JSON
   // -----------------------------------------
 
-  return new Response(JSON.stringify({
-  campaigns,
-  _debug: { shop, redisKey, responseTimeMs: totalTime },
-}), {
-  headers: {
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  },
-});
-
+  return new Response(
+    JSON.stringify({
+      campaigns,
+      _debug: { shop, redisKey, responseTimeMs: totalTime },
+    }),
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    },
+  );
 }
