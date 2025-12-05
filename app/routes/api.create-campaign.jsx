@@ -14,7 +14,6 @@ function getDefaultActiveDates() {
   };
 }
 
-
 /* ------------------ Helper: Save metafield ------------------ */
 async function setMetafield(admin, shopId, key, valueObj) {
   const mutation = `
@@ -41,7 +40,7 @@ async function setMetafield(admin, shopId, key, valueObj) {
 }
 
 /* ------------------ Helper: Ensure Automatic Discount Exists ------------------ */
-const DISCOUNT_FUNCTION_ID = process.env.TIERED_DISCOUNT_FUNCTION_ID; // same as tiers.jsx
+const DISCOUNT_FUNCTION_ID = process.env.TIERED_DISCOUNT_FUNCTION_ID; 
 const DISCOUNT_TITLE = "Optimaio Automatic Tier Discount";
 
 async function ensureAutomaticDiscountExists(admin) {
@@ -56,8 +55,8 @@ async function ensureAutomaticDiscountExists(admin) {
               title
               status
               appDiscountType {
-                appKey
                 functionId
+                appKey
               }
             }
           }
@@ -80,19 +79,32 @@ async function ensureAutomaticDiscountExists(admin) {
     return existing.discount;
   }
 
-  // 2️⃣ Create new discount (only if not found)
+  // 2️⃣ Create discount using 2026-01 mutation format
   const createMutation = `
-    mutation discountAutomaticAppCreate($automaticAppDiscount: DiscountAutomaticAppInput!) {
+    mutation discountAutomaticAppCreate(
+      $automaticAppDiscount: DiscountAutomaticAppInput!
+    ) {
       discountAutomaticAppCreate(automaticAppDiscount: $automaticAppDiscount) {
-        automaticAppDiscount {
-          discountId
-          title
-          status
-          startsAt
-        }
         userErrors {
           field
           message
+        }
+        automaticAppDiscount {
+          discountId
+          title
+          startsAt
+          endsAt
+          status
+          appDiscountType {
+            functionId
+            appKey
+          }
+          discountClasses
+          combinesWith {
+            orderDiscounts
+            productDiscounts
+            shippingDiscounts
+          }
         }
       }
     }
@@ -101,14 +113,16 @@ async function ensureAutomaticDiscountExists(admin) {
   const variables = {
     automaticAppDiscount: {
       title: DISCOUNT_TITLE,
-      functionId: DISCOUNT_FUNCTION_ID,
-      discountClasses: ["ORDER", "PRODUCT", "SHIPPING"],
-      startsAt: new Date().toISOString(), // required
+      functionId: DISCOUNT_FUNCTION_ID, // RAW UUID
+      startsAt: new Date().toISOString(),
+      discountClasses: ["ORDER", "PRODUCT", "SHIPPING"], // REQUIRED in API 2026-01
       combinesWith: {
         orderDiscounts: true,
         productDiscounts: true,
         shippingDiscounts: true,
-      },
+      }
+      // ⚠ You said: "keep discount settings as is"
+      // → Not adding metafields/config here
     },
   };
 
@@ -120,12 +134,13 @@ async function ensureAutomaticDiscountExists(admin) {
       "⚠️ Automatic discount creation errors:",
       createData.data.discountAutomaticAppCreate.userErrors
     );
-  } else {
-    console.log(
-      "✅ Discount created:",
-      createData.data.discountAutomaticAppCreate.automaticAppDiscount
-    );
+    return null;
   }
+
+  console.log(
+    "✅ Discount created:",
+    createData.data.discountAutomaticAppCreate.automaticAppDiscount
+  );
 
   return createData.data.discountAutomaticAppCreate.automaticAppDiscount;
 }
@@ -151,7 +166,7 @@ function getNextCampaignNumber(campaigns) {
 export const action = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
-  // ✅ Step 1: Make sure automatic discount exists before campaign creation
+  // Step 1: ensure discount exists
   await ensureAutomaticDiscountExists(admin);
 
   // Step 2: Get shopId
@@ -170,6 +185,7 @@ export const action = async ({ request }) => {
       }
     }
   `;
+
   const existingRes = await admin.graphql(query);
   const existingData = await existingRes.json();
   const existingMetafield = existingData.data.shop.metafield;
@@ -183,18 +199,19 @@ export const action = async ({ request }) => {
     }
   }
 
-  // Step 4: Create new campaign object
+  // Step 4: Create new campaign
   const nextNumber = getNextCampaignNumber(campaigns);
   const newCampaign = {
     id: generateId(),
     campaignName: `Cart goals ${nextNumber}`,
     status: "draft",
     campaignType: "tiered",
-      activeDates: getDefaultActiveDates(), 
+    activeDates: getDefaultActiveDates(),
   };
+
   campaigns.push(newCampaign);
 
-  // Step 5: Save updated metafield
+  // Step 5: Save metafield
   await setMetafield(admin, shopId, "campaigns", { campaigns });
 
   return json({ ok: true, campaign: newCampaign });

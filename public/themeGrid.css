@@ -1,0 +1,21 @@
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-preview {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 110%;
+  transform: translateY(-50%);
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  z-index: 999;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.tooltip-container:hover .tooltip-preview {
+  display: block;
+}

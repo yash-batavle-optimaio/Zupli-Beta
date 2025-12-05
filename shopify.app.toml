@@ -12,49 +12,37 @@ automatically_update_urls_on_dev = true
 api_version = "2025-10"
 
   [[webhooks.subscriptions]]
-  topics = [ "shop/update" ]
-  uri = "/webhooks/app/shop_currenacy_update"
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "carts/create" ]
+  uri = "/webhooks/app/cart_create"
 
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
   [[webhooks.subscriptions]]
-  topics = [ "app/scopes_update" ]
-  uri = "/webhooks/app/scopes_update"
-
-
-  [[webhooks.subscriptions]]
-  topics = ["markets/create"]
+  topics = [ "markets/delete", "markets/create", "markets/update" ]
   uri = "/webhooks/app/markets_info"
 
   [[webhooks.subscriptions]]
-  topics = ["markets/update"]
-  uri = "/webhooks/app/markets_info"
+  topics = [ "shop/update" ]
+  uri = "/webhooks/app/shop_currenacy_update"
 
   [[webhooks.subscriptions]]
-  topics = ["markets/delete"]
-  uri = "/webhooks/app/markets_info"
-
-    [[webhooks.subscriptions]]
-  topics = [ "carts/create" ]
-  uri = "/webhooks/app/cart_create"
-
-   [[webhooks.subscriptions]]
   topics = [ "carts/update" ]
   uri = "/webhooks/app/cart_update"
 
-  [app_proxy]
-url = "/optimaio-cart"
-prefix = "apps"
-subpath = "optimaio-cart"
-
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products,write_products,read_discounts,write_discounts,write_cart_transforms,write_app_proxy,read_content,read_markets,write_orders,read_orders"
-
+scopes = "read_content,read_discounts,read_markets,read_orders,read_products,write_app_proxy,write_cart_transforms,write_discounts,write_orders,write_products"
 
 [auth]
-redirect_urls = ["https://remix-app-rqyv.onrender.com/auth/callback"]
-#[build]
-#automatically_update_urls_on_dev = true
+redirect_urls = [ "https://remix-app-rqyv.onrender.com/auth/callback" ]
+
+[app_proxy]
+url = "https://remix-app-rqyv.onrender.com/optimaio-cart"
+subpath = "optimaio-cart"
+prefix = "apps"

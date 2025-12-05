@@ -83,7 +83,7 @@
 
 
   try {
-   const url = `https://remix-app-rqyv.onrender.com/campaign.js?shop=${window.__SHOP_DOMAIN__}`;
+   const url = `https://campaign-worker.developer-208.workers.dev/?shop=${window.__SHOP_DOMAIN__}`;
   console.log("pro Fetching live campaign:", url);
 
   const res = await fetch(url, { cache: "no-store" });
@@ -111,7 +111,7 @@
     
   // 1️⃣ Filter ONLY tiered / cart-goal campaigns (NOT bxgy)
   const tieredCampaigns = data.campaigns
-    .filter(c =>
+.filter(c =>
       c.status === "active" &&
       c.campaignType === "tiered" &&           // ignore bxgy
       Array.isArray(c.goals) &&
