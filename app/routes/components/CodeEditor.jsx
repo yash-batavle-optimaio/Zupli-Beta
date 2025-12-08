@@ -1,5 +1,5 @@
 import { Box } from "@shopify/polaris";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import HelpHeader from "./HelpHeader";
 
 export default function CodeEditor({
@@ -7,18 +7,34 @@ export default function CodeEditor({
   helpText = "",
   language = "text",
   placeholder = "",
+    value: externalValue = "",
+onChange 
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(externalValue);
+
+   const handleChange = (e) => {
+  const newValue = e.target.value;
+  setValue(newValue);
+  onChange && onChange(newValue);
+};
+
+
+  useEffect(() => {
+  setValue(externalValue);
+}, [externalValue]);
 
   const lines = value.split("\n");
   const lineCount = Math.min(Math.max(lines.length, 4), 300);
 
+  
   // Default placeholder based on language
   const defaultPlaceholders = {
     css: `/* Add your custom CSS here */\n`,
     js: `// Add your custom JavaScript here\n// No <script> tags needed\n`,
     text: "",
   };
+
+
 
   return (
     <Box >
@@ -62,7 +78,7 @@ export default function CodeEditor({
             <textarea
               className="Polaris-TextField__Input"
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={handleChange}
               placeholder={placeholder || defaultPlaceholders[language]}
               style={{
                 fontFamily: "monospace",

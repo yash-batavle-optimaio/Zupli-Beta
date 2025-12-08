@@ -7,10 +7,10 @@ import {
   BlockStack,
 } from "@shopify/polaris";
 import { ColorIcon } from "@shopify/polaris-icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import HelpHeader from "./HelpHeader";
 
-export default function CustomizeColorSelector() {
+export default function CustomizeColorSelector({ onChange }) {
   const [tab, setTab] = useState("button");
 
   // Button
@@ -23,6 +23,17 @@ export default function CustomizeColorSelector() {
   // Progress bar
   const [progressStart, setProgressStart] = useState("#ff0000");
   const [progressEnd, setProgressEnd] = useState("#0000ff");
+
+  useEffect(() => {
+   onChange &&
+     onChange({
+       buttonColor,
+       primaryColor,
+       secondaryColor,
+       progressStart,
+       progressEnd,
+    });
+ }, [buttonColor, primaryColor, secondaryColor, progressStart, progressEnd]);
 
   return (
     <Box paddingTop="200" paddingBottom="300">

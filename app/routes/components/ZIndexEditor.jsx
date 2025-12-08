@@ -4,37 +4,27 @@ import HelpHeader from "./HelpHeader";
 
 export default function ZIndexEditor({
   title = "Z-index",
-  helpText = "Set the z-index for the cart widget to control stacking order.",
+  helpText = "Set stacking order",
   onChange,
   defaultValue = "5000",
 }) {
   const [value, setValue] = useState(defaultValue);
 
-  const handleChange = useCallback(
-    (newValue) => {
-      // Allow only numbers
-      const cleaned = newValue.replace(/[^0-9]/g, "") || "0";
-
-      setValue(cleaned);
-
-      if (onChange) onChange(cleaned);
-    },
-    []
-  );
+  const handleChange = (newValue) => {
+    const cleaned = newValue.replace(/[^0-9]/g, "") || "0";
+    setValue(cleaned);
+    onChange?.(cleaned);
+  };
 
   return (
     <Box paddingBottom="200">
-      {/* HEADER */}
       <HelpHeader title={title} helpText={helpText} />
 
-      {/* Z INDEX INPUT */}
-      <TextField
-        type="number"
-        value={value}
-        onChange={handleChange}
-        min={0}
-        autoComplete="off"
-      />
+      <TextField type="number" value={value} onChange={handleChange} />
+
+      {/* Hidden metafield input */}
+      <input type="hidden" name="zIndex" value={value} />
     </Box>
   );
 }
+

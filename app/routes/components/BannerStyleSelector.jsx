@@ -7,16 +7,33 @@ import {
   BlockStack,
 } from "@shopify/polaris";
 import { ColorIcon } from "@shopify/polaris-icons";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import HelpHeader from "./HelpHeader";
 
-export default function BannerStyleSelector() {
+export default function BannerStyleSelector({ onChange }) {
   const [bannerType, setBannerType] = useState("solid");
   const [solidColor, setSolidColor] = useState("#ff0000");
   const [gradientStart, setGradientStart] = useState("#ff0000");
   const [gradientEnd, setGradientEnd] = useState("#0000ff");
   const [imageUrl, setImageUrl] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
+
+  const emitChange = (updated = {}) => {
+  onChange?.({
+    bannerType,
+    solidColor,
+    gradientStart,
+    gradientEnd,
+    imageUrl,
+    uploadedFile,
+    ...updated, // override with incoming values
+  });
+};
+
+  // 🔥 SEND INITIAL VALUES TO PARENT
+  useEffect(() => {
+    emitChange();
+  }, []);
 
   return (
     <Box paddingTop="200" paddingBottom="300">
@@ -33,7 +50,11 @@ export default function BannerStyleSelector() {
         {["solid", "gradient", "image"].map((type) => (
           <Box
             key={type}
-            onClick={() => setBannerType(type)}
+           onClick={() => {
+  setBannerType(type);
+  emitChange({ bannerType: type });
+}}
+
             style={{ cursor: "pointer", textAlign: "center" }}
           >
             <Text
@@ -105,7 +126,12 @@ export default function BannerStyleSelector() {
               type="color"
               id="solidColorPickerInput"
               value={solidColor}
-              onChange={(e) => setSolidColor(e.target.value)}
+            onChange={(e) => {
+  const v = e.target.value;
+  setSolidColor(v);
+  emitChange({ solidColor: v, bannerType: "solid" });
+}}
+
               style={{ display: "none" }}
             />
           </Box>
@@ -161,7 +187,12 @@ export default function BannerStyleSelector() {
                 type="color"
                 id="gradientStartColorInput"
                 value={gradientStart}
-                onChange={(e) => setGradientStart(e.target.value)}
+               onChange={(e) => {
+  const v = e.target.value;
+  setGradientStart(v);
+  emitChange({ gradientStart: v, bannerType: "gradient" });
+}}
+
                 style={{ display: "none" }}
               />
             </Box>
@@ -215,7 +246,12 @@ export default function BannerStyleSelector() {
                 type="color"
                 id="gradientEndColorInput"
                 value={gradientEnd}
-                onChange={(e) => setGradientEnd(e.target.value)}
+               onChange={(e) => {
+  const v = e.target.value;
+  setGradientEnd(v);
+  emitChange({ gradientEnd: v, bannerType: "gradient" });
+}}
+
                 style={{ display: "none" }}
               />
             </Box>
@@ -236,7 +272,11 @@ export default function BannerStyleSelector() {
               labelHidden
               placeholder="Paste image URL"
               value={imageUrl}
-              onChange={setImageUrl}
+              onChange={(v) => {
+  setImageUrl(v);
+  emitChange({ imageUrl: v, bannerType: "image" });
+}}
+
             />
 
             <InlineStack align="center" gap="200">
@@ -263,7 +303,12 @@ export default function BannerStyleSelector() {
                 accept="image/*"
                 id="imageUploadInput"
                 style={{ display: "none" }}
-                onChange={(e) => setUploadedFile(e.target.files[0])}
+                onChange={(e) => {
+  const file = e.target.files[0];
+  setUploadedFile(file);
+  emitChange({ uploadedFile: file, bannerType: "image" });
+}}
+
               />
             </Box>
           </BlockStack>
