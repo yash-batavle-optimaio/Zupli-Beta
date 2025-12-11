@@ -1,6 +1,7 @@
 import { authenticate } from "../shopify.server";
 import { Page, Layout, Card, TextField, Text } from "@shopify/polaris";
 import { useState } from "react";
+import TimerDateAndTime from "./components/TimerDateAndTime";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -10,6 +11,13 @@ export const loader = async ({ request }) => {
 export default function AppSupportPage() {
   const [title, setTitle] = useState("Scarcity Timer");
   const [timerText, setTimerText] = useState("Hurry! Offer ends soon!");
+
+  // ✅ FIXED — no undefined settings
+  const [activeDates, setActiveDates] = useState({
+    start: { date: null },
+    end: null,
+    hasEndDate: false,
+  });
 
   return (
     <Page title="Cart Settings">
@@ -22,6 +30,13 @@ export default function AppSupportPage() {
               <Text variant="headingMd" as="h6">
                 Cart Scarcity Timer Settings
               </Text>
+<TimerDateAndTime
+  value={activeDates}
+  onChange={(updated) => {
+    console.log("ACTIVE DATES CHANGED →", updated);
+    setActiveDates(updated);
+  }}
+/>
 
               {/* Title Input */}
               <TextField

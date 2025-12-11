@@ -176,7 +176,7 @@ export default function ThemeGrid({ onSelect, selectedTheme }) {
   const [previewTheme, setPreviewTheme] = useState(null);
   const [open, setOpen] = useState(false);
 
-  // Currently applied theme (parent state)
+  // The theme currently applied
   const appliedTheme = ColorThemes.find((t) => t.id === selectedTheme);
 
   const handleSelect = (theme) => {
@@ -187,36 +187,39 @@ export default function ThemeGrid({ onSelect, selectedTheme }) {
   return (
     <>
       <InlineGrid columns={{ xs: 1, sm: 2, md: 3 }} gap="300">
-        {ColorThemes.map((theme) => (
-          <Box
-            key={theme.id}
-            onClick={() => handleSelect(theme)}
-            padding="300"
-            background={
-              appliedTheme?.id === theme.id
-                ? "bg-fill-success-secondary"
-                : "bg-surface"
-            }
-            borderWidth="1"
-            borderRadius="300"
-            borderColor={
-              appliedTheme?.id === theme.id ? "border-success" : "border"
-            }
-            style={{
-              cursor: "pointer",
-              transition: "0.2s",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-            }}
-          >
-            <Box>{theme.svg}</Box>
-            <Text variant="headingMd">{theme.name}</Text>
-          </Box>
-        ))}
+        {ColorThemes.map((theme) => {
+          const isSelected = appliedTheme?.id === theme.id;
+
+          return (
+<Box
+  key={theme.id}
+  onClick={() => handleSelect(theme)}
+  padding="400"                    // ⬅ add more padding so SVG does not touch border
+  background={isSelected ? "bg-fill-tertiary" : "bg-surface"}
+  borderWidth="1"
+  borderRadius="300"
+  borderColor="border"
+  style={{
+    cursor: "pointer",
+    transition: "0.2s",
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",                   // optional: more space between icon and text
+    boxShadow: isSelected ? "0 0 0 2px #D0D4D9 inset" : "none",
+  }}
+>
+
+              <Box padding="100" >
+      {/* shrink from 70px */}
+      {theme.svg}
+
+  </Box>
+              <Text variant="headingMd">{theme.name}</Text>
+            </Box>
+          );
+        })}
       </InlineGrid>
 
-      {/* Modal Preview */}
       {previewTheme && (
         <Modal
           open={open}
@@ -233,21 +236,16 @@ export default function ThemeGrid({ onSelect, selectedTheme }) {
               setPreviewTheme(null);
             },
           }}
-          secondaryActions={[
-            {
-              content: "Close",
-              onAction: () => {
-                setOpen(false);
-                setPreviewTheme(null);
-              },
-            },
-          ]}
         >
           <Modal.Section>
-            <Box style={{ display: "flex", justifyContent: "center", padding: "20px" }}>
+            <Box style={{ 
+              display: "flex", 
+              justifyContent: "center", 
+              padding: "20px" 
+            }}>
               {previewTheme.svg}
             </Box>
-            <Text variant="bodyMd" alignment="center" color="subdued">
+            <Text alignment="center" color="subdued">
               Preview of the selected theme.
             </Text>
           </Modal.Section>
@@ -256,4 +254,5 @@ export default function ThemeGrid({ onSelect, selectedTheme }) {
     </>
   );
 }
+
 

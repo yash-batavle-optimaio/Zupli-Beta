@@ -5,14 +5,11 @@ import HelpHeader from "./HelpHeader";
 export default function ZIndexEditor({
   title = "Z-index",
   helpText = "Set stacking order",
+  value,
   onChange,
-  defaultValue = "5000",
 }) {
-  const [value, setValue] = useState(defaultValue);
-
   const handleChange = (newValue) => {
     const cleaned = newValue.replace(/[^0-9]/g, "") || "0";
-    setValue(cleaned);
     onChange?.(cleaned);
   };
 
@@ -22,7 +19,6 @@ export default function ZIndexEditor({
 
       <TextField type="number" value={value} onChange={handleChange} />
 
-      {/* Hidden metafield input */}
       <input type="hidden" name="zIndex" value={value} />
     </Box>
   );

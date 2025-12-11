@@ -5,18 +5,30 @@ import {
   InlineStack,
   Icon,
   BlockStack,
+  Divider,
 } from "@shopify/polaris";
 import { ColorIcon } from "@shopify/polaris-icons";
 import { useState,useEffect } from "react";
 import HelpHeader from "./HelpHeader";
 
-export default function BannerStyleSelector({ onChange }) {
-  const [bannerType, setBannerType] = useState("solid");
-  const [solidColor, setSolidColor] = useState("#ff0000");
-  const [gradientStart, setGradientStart] = useState("#ff0000");
-  const [gradientEnd, setGradientEnd] = useState("#0000ff");
-  const [imageUrl, setImageUrl] = useState("");
+export default function BannerStyleSelector({ onChange , value}) {
+const [bannerType, setBannerType] = useState(value?.bannerType || "solid");
+ const [solidColor, setSolidColor] = useState(value?.solidColor || "#ff0000");
+const [gradientStart, setGradientStart] = useState(value?.gradientStart || "#ff0000");
+const [gradientEnd, setGradientEnd] = useState(value?.gradientEnd || "#0000ff");
+const [imageUrl, setImageUrl] = useState(value?.imageUrl || "");
+
   const [uploadedFile, setUploadedFile] = useState(null);
+
+  useEffect(() => {
+  if (!value) return;
+  setBannerType(value.bannerType || "solid");
+  setSolidColor(value.solidColor || "#ff0000");
+  setGradientStart(value.gradientStart || "#ff0000");
+  setGradientEnd(value.gradientEnd || "#0000ff");
+  setImageUrl(value.imageUrl || "");
+}, [value]);
+
 
   const emitChange = (updated = {}) => {
   onChange?.({
@@ -83,6 +95,8 @@ export default function BannerStyleSelector({ onChange }) {
       {/* -------- SOLID PICKER -------- */}
       {bannerType === "solid" && (
         <Box paddingY="400">
+            <div style={{ marginTop: "10px" }}> <Divider /></div>
+             
           <Text variant="headingSm" fontWeight="semibold">
             Choose Solid Color
           </Text>
@@ -141,6 +155,8 @@ export default function BannerStyleSelector({ onChange }) {
       {/* -------- GRADIENT PICKER -------- */}
       {bannerType === "gradient" && (
         <Box paddingY="400">
+            <div style={{ marginTop: "10px" }}> <Divider /></div>
+             
           <Text variant="headingSm" fontWeight="semibold">
             Choose Gradient Colors
           </Text>
@@ -263,6 +279,9 @@ export default function BannerStyleSelector({ onChange }) {
       {/* -------- IMAGE PICKER -------- */}
       {bannerType === "image" && (
         <Box paddingY="400">
+
+            <div style={{ marginTop: "10px" }}> <Divider /></div>
+             
           <Text variant="headingSm" fontWeight="semibold">
             Upload Image
           </Text>
@@ -279,13 +298,14 @@ export default function BannerStyleSelector({ onChange }) {
 
             />
 
-            <InlineStack align="center" gap="200">
+            {/* <InlineStack align="center" gap="200">
               <Box style={{ height: "1px", flex: 1, background: "#ddd" }} />
               <Text tone="subdued">or</Text>
               <Box style={{ height: "1px", flex: 1, background: "#ddd" }} />
-            </InlineStack>
+            </InlineStack> */}
 
-            <Box
+            {/* <Box
+            dis
               padding="300"
               borderWidth="1"
               borderColor="border-subdued"
@@ -310,7 +330,7 @@ export default function BannerStyleSelector({ onChange }) {
 }}
 
               />
-            </Box>
+            </Box> */}
           </BlockStack>
         </Box>
       )}
