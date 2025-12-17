@@ -4,14 +4,19 @@ import {
   Box,
   BlockStack,
   InlineGrid,
+  InlineStack,
+  Text,
+  Button,
+  Icon,
 } from "@shopify/polaris";
+
 import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 
 import { authenticate } from "../shopify.server";
 
 import Colabssiblecom from "./components/Colabssiblecom";
-import { PaintBrushFlatIcon } from "@shopify/polaris-icons";
+import { PaintBrushFlatIcon , ArrowLeftIcon} from "@shopify/polaris-icons";
 
 import ThemeGrid from "./components/ThemeGrid";
 import BannerStyleSelector from "./components/BannerStyleSelector";
@@ -157,7 +162,19 @@ useEffect(() => {
 
   return (
     <>
-      <Page title="Cart Settings">
+      <Page title={
+          <InlineStack gap="500" blockAlign="center">
+            <Button
+              icon={ArrowLeftIcon}
+              plain
+              onClick={() => window.history.back()}
+            />
+            <Text variant="headingLg" as="h2">
+              Cart Appearance
+            </Text>
+          </InlineStack>
+        }>
+        <Box paddingBlockEnd="600">
 
         <InlineGrid columns={{ xs: 1, md: "2fr 1fr" }} gap="400">
           
@@ -242,6 +259,7 @@ useEffect(() => {
 
         </InlineGrid>
 
+</Box>
       </Page>
 
       {/* SAVE BAR */}

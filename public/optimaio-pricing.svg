@@ -1,0 +1,67 @@
+<svg
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Cart curve shadow -->
+  <path
+    d="M10 44 C20 50, 44 50, 54 44"
+    stroke="#111827"
+    stroke-width="2"
+    opacity="0.15"
+    stroke-linecap="round"
+  />
+
+  <!-- Coin base -->
+  <ellipse
+    cx="32"
+    cy="30"
+    rx="22"
+    ry="18"
+    fill="#FFC83D"
+    stroke="#111827"
+    stroke-width="2"
+  />
+
+  <!-- Optimization slice -->
+  <path
+    d="M32 12 L32 48"
+    stroke="#111827"
+    stroke-width="2"
+    stroke-dasharray="3 3"
+    opacity="0.4"
+  />
+
+  <!-- Dollar symbol (custom) -->
+  <path
+    d="M32 20
+       C28 20, 26 22, 26 24
+       C26 26, 28 27, 32 28
+       C36 29, 38 30, 38 33
+       C38 36, 35 38, 32 38
+       C29 38, 26 36, 26 34"
+    stroke="#111827"
+    stroke-width="2.5"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+  <!-- Dollar vertical -->
+  <line
+    x1="32"
+    y1="18"
+    x2="32"
+    y2="42"
+    stroke="#111827"
+    stroke-width="2.5"
+    stroke-linecap="round"
+  />
+
+  <!-- Conversion arrow -->
+  <path
+    d="M46 14 L52 10 L50 18"
+    fill="#111827"
+  />
+</svg>

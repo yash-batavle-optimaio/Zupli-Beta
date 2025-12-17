@@ -30,6 +30,7 @@ import {
   DiscountIcon,
   SettingsIcon,
   BlogIcon,
+  ArrowLeftIcon
 } from "@shopify/polaris-icons";
 import { Icon } from "@shopify/polaris";
 import ProductPickerModal from "./components/ProductPickerModal";
@@ -1991,7 +1992,18 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
   ));
 
   return (
-    <Page title="Campaigns">
+    <Page title={
+          <InlineStack gap="500" blockAlign="center">
+            <Button
+              icon={ArrowLeftIcon}
+              plain
+              onClick={() => window.history.back()}
+            />
+            <Text variant="headingLg" as="h2">
+              My Campaigns
+            </Text>
+          </InlineStack>
+        }>
       {loading ? (
         <Spinner accessibilityLabel="Loading campaigns" size="large" />
       ) : (

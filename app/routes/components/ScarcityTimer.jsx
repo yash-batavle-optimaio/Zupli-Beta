@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BlockStack,
   ChoiceList,
@@ -12,25 +12,34 @@ import EndDateAndTime from "./EndDateAndTime";
 import { ClockIcon } from "@shopify/polaris-icons";
 import HelpHeader from "./HelpHeader";
 
-export default function ScarcityTimer({ onChange, title, helpText }) {
+export default function ScarcityTimer({ value, onChange, title, helpText }) {
   // -----------------------
-  // INTERNAL STATES
+  // INTERNAL STATE
   // -----------------------
-  const [timerMode, setTimerMode] = useState("specific");
-
-  const [activeDates, setActiveDates] = useState({
-    date: null,
-    time: "11:00 PM",
-  });
-
+  const [timerMode, setTimerMode] = useState("duration");
   const [duration, setDuration] = useState({
     hours: "0",
     minutes: "5",
     seconds: "0",
   });
+  const [activeDates, setActiveDates] = useState({
+    date: null,
+    time: "11:00 PM",
+  });
 
   // -----------------------
-  // EMIT CHANGE (optional)
+  // 🔁 HYDRATE FROM PARENT
+  // -----------------------
+  useEffect(() => {
+    if (!value) return;
+
+    if (value.timerMode) setTimerMode(value.timerMode);
+    if (value.duration) setDuration(value.duration);
+    if (value.activeDates) setActiveDates(value.activeDates);
+  }, [value]);
+
+  // -----------------------
+  // EMIT CHANGE
   // -----------------------
   const emitChange = (override = {}) => {
     onChange?.({
@@ -64,15 +73,16 @@ export default function ScarcityTimer({ onChange, title, helpText }) {
       icon={ClockIcon}
     >
       <HelpHeader title={title} helpText={helpText} />
+
       <BlockStack gap="100">
-        {/* TIMER MODE SWITCH */}
+        {/* TIMER MODE */}
         <ChoiceList
           choices={[
             {
               label: (
                 <div>
                   <strong>Timer for a specified duration</strong>
-                  <div style={{ fontSize: "13px", color: "#616161" }}>
+                  <div style={{ fontSize: 13, color: "#616161" }}>
                     Timer starts when the first product is added.
                   </div>
                 </div>
@@ -83,8 +93,8 @@ export default function ScarcityTimer({ onChange, title, helpText }) {
               label: (
                 <div>
                   <strong>Countdown to a specific date & time</strong>
-                  <div style={{ fontSize: "13px", color: "#616161" }}>
-                    Timer counts down to a specific date.
+                  <div style={{ fontSize: 13, color: "#616161" }}>
+                    Timer counts down to a date.
                   </div>
                 </div>
               ),
