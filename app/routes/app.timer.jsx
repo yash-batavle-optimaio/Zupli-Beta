@@ -71,13 +71,12 @@ export default function ResourceDetailsLayout() {
      LOAD SAVED DATA
   -------------------------------------------------- */
   useEffect(() => {
-    const loadTimerSettings = async () => {
-      try {
-        const res = await fetch("/api/get-timer");
-        const data = await res.json();
+  const loadTimerSettings = async () => {
+    try {
+      const res = await fetch("/api/get-timer");
+      const data = await res.json();
 
-        if (!data.ok || !data.data) return;
-
+      if (data.ok && data.data) {
         const snapshot = {
           timerConfig: data.data.timerConfig,
           timerText: data.data.timerText,
@@ -94,15 +93,26 @@ export default function ResourceDetailsLayout() {
         setStatus(snapshot.status);
         setActiveDates(snapshot.activeDates);
 
-        // 🔒 baseline
         setInitialSnapshot(snapshot);
-      } catch (err) {
-        console.error("🔥 LOAD ERROR:", err);
+      } else {
+        // 🔑 IMPORTANT: baseline = defaults
+        setInitialSnapshot({
+          timerConfig,
+          timerText,
+          expiredMessage,
+          afterAction,
+          status,
+          activeDates,
+        });
       }
-    };
+    } catch (err) {
+      console.error("🔥 LOAD ERROR:", err);
+    }
+  };
 
-    loadTimerSettings();
-  }, []);
+  loadTimerSettings();
+}, []);
+
 
   /* --------------------------------------------------
      NORMALIZE DATES

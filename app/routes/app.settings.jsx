@@ -58,7 +58,7 @@ export default function AppSettingsPage() {
 
     {/* RIGHT — Action */}
  <Button
-  primary
+  variant="primary"
   onClick={() => navigate("/app/pricing")}
 >
   Upgrade plan

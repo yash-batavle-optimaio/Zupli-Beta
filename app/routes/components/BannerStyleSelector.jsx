@@ -42,10 +42,7 @@ const [imageUrl, setImageUrl] = useState(value?.imageUrl || "");
   });
 };
 
-  // 🔥 SEND INITIAL VALUES TO PARENT
-  useEffect(() => {
-    emitChange();
-  }, []);
+
 
   return (
     <Box paddingTop="200" paddingBottom="300">

@@ -70,7 +70,10 @@ export default function ResourceDetailsLayout() {
 
   // Local states
 const [selectedTheme, setSelectedTheme] = useState(() => settings.theme);
-const [bannerStyle, setBannerStyle] = useState(() => settings.bannerStyle);
+const [bannerStyle, setBannerStyle] = useState(() => ({
+  bannerType: settings.bannerStyle?.bannerType || "solid",
+  ...settings.bannerStyle,
+}));
 const [colors, setColors] = useState(() => settings.colors);
 const [customCSS, setCustomCSS] = useState(() => settings.customCSS);
 const [customJS, setCustomJS] = useState(() => settings.customJS);
@@ -101,12 +104,16 @@ useEffect(() => {
 
 useEffect(() => {
   setSelectedTheme(settings.theme);
-  setBannerStyle(settings.bannerStyle);
+  setBannerStyle({
+    bannerType: settings.bannerStyle?.bannerType || "solid",
+    ...settings.bannerStyle,
+  });
   setColors(settings.colors);
   setCustomCSS(settings.customCSS);
   setCustomJS(settings.customJS);
   setZIndex(settings.zIndex);
 }, [settings]);
+
 
 
   // Detect changes (like in my-campaign)
