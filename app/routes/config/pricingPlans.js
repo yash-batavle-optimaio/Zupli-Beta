@@ -1,10 +1,23 @@
+import {
+  CheckCircleIcon,
+  StoreIcon,
+  ArrowLeftIcon,
+  RewardIcon,
+  OrganizationIcon,
+  ChartHistogramGrowthIcon,
+
+} from "@shopify/polaris-icons";
+
+
 export const PRICING_PLANS = [
   {
     id: "free",
     title: "Free",
     subtitle: "Free forever",
-    price: 0,
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     disabled: true,
+    icon: StoreIcon,
     features: [
       "Cart theming",
       "Floating cart button",
@@ -20,7 +33,9 @@ export const PRICING_PLANS = [
     id: "standard",
     title: "Standard",
     subtitle: "Fixed pricing based on Shopify plan",
-    price: 15,
+    monthlyPrice: 15,
+    yearlyPrice: 150, // 2 months free
+    icon: RewardIcon,
     features: [
       "Everything in Free plan",
       "In-cart upsell",
@@ -36,9 +51,11 @@ export const PRICING_PLANS = [
   },
   {
     id: "grow",
-    title: "For Grow",
+    title: "Grow",
     subtitle: "For stores using Shopify Plan",
-    price: 29,
+    monthlyPrice: 29,
+    yearlyPrice: 290,
+    icon: ChartHistogramGrowthIcon,
     features: [
       "Unlimited campaigns",
       "Free gift campaigns",
@@ -50,10 +67,12 @@ export const PRICING_PLANS = [
     ],
   },
   {
-    id: "advanced",
-    title: "Advanced Shopify",
+    id: "enterprise",
+    title: "Enterprise",
     subtitle: "For stores using Advanced Shopify Plan",
-    price: 59,
+    monthlyPrice: 59,
+    yearlyPrice: 590,
+    icon: OrganizationIcon,
     features: [
       "Unlimited campaigns",
       "Free gift campaigns",

@@ -9,73 +9,100 @@ import {
   Button,
   Icon,
   Divider,
+  ButtonGroup,
+  Badge,
 } from "@shopify/polaris";
-import { CheckCircleIcon, StoreIcon } from "@shopify/polaris-icons";
-import { useNavigate } from "@remix-run/react";
-import { PRICING_PLANS } from "./config/pricingPlans";
+import {
+  CheckCircleIcon,
+  StoreIcon,
+  ArrowLeftIcon,
+  RewardIcon,
+  OrganizationIcon,
+  ChartHistogramGrowthIcon,
 
+} from "@shopify/polaris-icons";
+import { useState } from "react";
+import { PRICING_PLANS } from "./config/pricingPlans";
+import { authenticate } from "../shopify.server";
+
+
+export const loader = async ({ request }) => {
+  await authenticate.admin(request);
+  return null;
+};
 /* ---------------- Plans Config ---------------- */
 const PLANS = PRICING_PLANS;
-
 /* ---------------- Feature Row ---------------- */
 function FeatureItem({ label }) {
   return (
-   <InlineStack gap="200" align="start" wrap={false}>
-  <Box minWidth="20px" flexShrink={0}>
-    <Icon source={CheckCircleIcon} tone="success" />
-  </Box>
-
-  <Box>
-    <Text as="span">{label}</Text>
-  </Box>
-</InlineStack>
-
+    <InlineStack gap="200" align="start" wrap={false}>
+      <Box minWidth="20px" flexShrink={0}>
+        <Icon source={CheckCircleIcon} tone="success" />
+      </Box>
+      <Box>
+        <Text as="span">{label}</Text>
+      </Box>
+    </InlineStack>
   );
 }
-
 /* ---------------- Pricing Card ---------------- */
-function PricingCard({ plan }) {
+function PricingCard({ plan, billingCycle }) {
+  const price =
+    billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
+  const yearlySavings = plan.monthlyPrice * 12 - plan.yearlyPrice;
+  const offPercent =
+    plan.monthlyPrice > 0
+      ? Math.round((yearlySavings / (plan.monthlyPrice * 12)) * 100)
+      : 0;
   return (
     <Card>
       <BlockStack gap="400">
         {/* Header */}
+
         <BlockStack gap="100">
           <InlineStack gap="200" align="start" wrap={false}>
-            <Box minWidth="20px" flexShrink={0}>
-              <Icon source={StoreIcon} />
-            </Box>
-            <Text
-              as={plan.id === "free" ? "h1" : "h3"}
-              variant="headingXl"
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline", // 🔥 key for correct alignment
+                gap: "2px",
+              }}
             >
-              {plan.title}
-            </Text>
+              <Icon source={plan.icon} />
+              <Text as="span" variant="headingXl" fontWeight="bold">
+                {plan.title}
+              </Text>
+            </div>
           </InlineStack>
           <Text tone="subdued">{plan.subtitle}</Text>
         </BlockStack>
 
         {/* Price */}
-        <Text as="h2" variant="headingLg">
-          ${plan.price}{" "}
-          <Text as="span" tone="subdued" variant="bodyMd">
-            /Month
+        <BlockStack gap="100">
+          <Text as="h2" variant="headingLg">
+            ${price}{" "}
+            <Text as="span" tone="subdued" variant="bodyMd">
+              {billingCycle === "yearly" ? "/Year" : "/Month"}
+            </Text>
           </Text>
-        </Text>
-
-        {/* Button BELOW price */}
-        <Button
-          fullWidth
-          variant="primary"
-          disabled={plan.disabled}
-        >
+          {/* 🔥 OFF PRICE (GREEN, BELOW PRICE) */}
+          {billingCycle === "yearly" && yearlySavings > 0 && (
+            <InlineStack gap="200" align="start">
+              <Badge tone="success">{offPercent}% OFF</Badge>
+              <Text tone="success" variant="bodySm">
+                Save ${yearlySavings} yearly
+              </Text>
+            </InlineStack>
+          )}
+        </BlockStack>
+        {/* Button */}
+        <Button fullWidth variant="primary" disabled={plan.disabled}>
           {plan.disabled ? "Current plan" : "Upgrade"}
         </Button>
-
         {/* Divider */}
         <Box>
           <Divider />
         </Box>
-
         {/* Features */}
         <BlockStack gap="200">
           {plan.features.map((feature) => (
@@ -86,63 +113,91 @@ function PricingCard({ plan }) {
     </Card>
   );
 }
-
-
-
-
 /* ---------------- Pricing Page ---------------- */
 export default function Pricing() {
-  const navigate = useNavigate();
-
+  const [billingCycle, setBillingCycle] = useState("monthly");
   return (
     <Page
-      title="Pricing"
-      backAction={{
-        content: "Back",
-        onAction: () => navigate(-1),
-      }}
+      title={
+        <InlineStack gap="500" blockAlign="center">
+          <Button
+            icon={ArrowLeftIcon}
+            plain
+            onClick={() => window.history.back()}
+          />
+          <Text variant="headingLg" as="h2">
+            Pricing
+          </Text>
+        </InlineStack>
+      }
     >
-      <Card>
-        <BlockStack gap="600">
-          {/* Header */}
-          <InlineGrid columns="auto 1fr" gap="400" alignItems="center">
-            <Box width="64px" height="64px">
-              <img
-                src="/optimaio-pricing.svg"
-                alt="Optimaio pricing"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-              />
-            </Box>
-
-            <BlockStack gap="100">
-              <Text as="h2" variant="headingMd">
-                Select a plan
-              </Text>
-              <Text tone="subdued">
-                Our pricing is flexible for merchants while ensuring world-class
-                service without compromise.
-              </Text>
-            </BlockStack>
-          </InlineGrid>
-
-          {/* Pricing Cards */}
-          <Box maxWidth="900px" paddingInline="400" marginInline="auto">
-<InlineGrid   alignItems="stretch"
-  columns={{ xs: "1fr 1fr", md: "1fr 1fr" , lg: "1fr 1fr 1fr", xl: "1fr 1fr 1fr 1fr"}}
-  gap="400"
->
-  
-              {PLANS.map((plan) => (
-                <PricingCard key={plan.id} plan={plan} />
-              ))}
+      <Box paddingBlockEnd="600">
+        <Card>
+          <BlockStack gap="600">
+            {/* Header */}
+            <InlineGrid columns="auto 1fr" gap="400" alignItems="center">
+              <Box width="64px" height="64px">
+                <img
+                  src="/optimaio-pricing.svg"
+                  alt="Optimaio pricing"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              </Box>
+              <BlockStack gap="100">
+                <Text as="h2" variant="headingMd">
+                  Select a plan
+                </Text>
+                <Text tone="subdued">
+                  Our pricing is flexible for merchants while ensuring
+                  world-class service without compromise.
+                </Text>
+              </BlockStack>
             </InlineGrid>
-          </Box>
-        </BlockStack>
-      </Card>
+            {/* Toggle (NO layout change) */}
+            <InlineStack align="center">
+              <ButtonGroup segmented>
+                <Button
+                  pressed={billingCycle === "monthly"}
+                  onClick={() => setBillingCycle("monthly")}
+                >
+                  Monthly
+                </Button>
+                <Button
+                  pressed={billingCycle === "yearly"}
+                  onClick={() => setBillingCycle("yearly")}
+                >
+                  Annually
+                </Button>
+              </ButtonGroup>
+            </InlineStack>
+            {/* Pricing Cards (GRID UNCHANGED) */}
+            <Box maxWidth="900px" paddingInline="400" marginInline="auto">
+              <InlineGrid
+                alignItems="stretch"
+                columns={{
+                  xs: "1fr 1fr",
+                  md: "1fr 1fr",
+                  lg: "1fr 1fr",
+                  xl: "1fr 1fr ",
+                }}
+                gap="400"
+              >
+                {PLANS.map((plan) => (
+                  <PricingCard
+                    key={plan.id}
+                    plan={plan}
+                    billingCycle={billingCycle}
+                  />
+                ))}
+              </InlineGrid>
+            </Box>
+          </BlockStack>
+        </Card>
+      </Box>
     </Page>
   );
 }

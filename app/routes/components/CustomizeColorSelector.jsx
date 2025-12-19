@@ -9,7 +9,7 @@ import {
   Banner,
 } from "@shopify/polaris";
 import { ColorIcon } from "@shopify/polaris-icons";
-import { useState, useEffect } from "react";
+import { useState, useEffect , useRef } from "react";
 import HelpHeader from "./HelpHeader";
 
 export default function CustomizeColorSelector({ onChange, value }) {
@@ -36,6 +36,8 @@ export default function CustomizeColorSelector({ onChange, value }) {
     value?.progressEnd || "#0000ff",
   );
 
+  const isInitialLoad = useRef(true);
+
   // Sync when saved metafield loads
   useEffect(() => {
     if (!value) return;
@@ -47,17 +49,11 @@ export default function CustomizeColorSelector({ onChange, value }) {
     setProgressEnd(value.progressEnd || "#0000ff");
   }, [value]);
 
-  // Send output to parent
-  useEffect(() => {
-    onChange &&
-      onChange({
-        buttonColor,
-        primaryColor,
-        secondaryColor,
-        progressStart,
-        progressEnd,
-      });
-  }, [buttonColor, primaryColor, secondaryColor, progressStart, progressEnd]);
+
+useEffect(() => {
+  isInitialLoad.current = false;
+}, []);
+
 
   return (
     <Box paddingTop="200" paddingBottom="300">
@@ -145,13 +141,18 @@ export default function CustomizeColorSelector({ onChange, value }) {
               Button color
             </Text>
 
-            <input
-              type="color"
-              id="buttonColorInput"
-              value={buttonColor}
-              onChange={(e) => setButtonColor(e.target.value)}
-              style={{ display: "none" }}
-            />
+          <input
+  type="color"
+  id="buttonColorInput"
+  value={buttonColor}
+  onChange={(e) => {
+    const val = e.target.value;
+    setButtonColor(val);
+    onChange?.("buttonColor", val);
+  }}
+  style={{ display: "none" }}
+/>
+
           </Box>
         </Box>
       )}
@@ -208,13 +209,18 @@ export default function CustomizeColorSelector({ onChange, value }) {
                 Primary
               </Text>
 
-              <input
-                type="color"
-                id="primaryColorInput"
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                style={{ display: "none" }}
-              />
+           <input
+  type="color"
+  id="primaryColorInput"
+  value={primaryColor}
+  onChange={(e) => {
+    const val = e.target.value;
+    setPrimaryColor(val);
+    onChange?.("primaryColor", val);
+  }}
+  style={{ display: "none" }}
+/>
+
             </Box>
 
             {/* Divider */}
@@ -264,13 +270,18 @@ export default function CustomizeColorSelector({ onChange, value }) {
                 Secondary
               </Text>
 
-              <input
-                type="color"
-                id="secondaryColorInput"
-                value={secondaryColor}
-                onChange={(e) => setSecondaryColor(e.target.value)}
-                style={{ display: "none" }}
-              />
+             <input
+  type="color"
+  id="secondaryColorInput"
+  value={secondaryColor}
+  onChange={(e) => {
+    const val = e.target.value;
+    setSecondaryColor(val);
+    onChange?.("secondaryColor", val);
+  }}
+  style={{ display: "none" }}
+/>
+
             </Box>
           </InlineStack>
         </Box>
@@ -327,13 +338,18 @@ export default function CustomizeColorSelector({ onChange, value }) {
                 Start color
               </Text>
 
-              <input
-                type="color"
-                id="progressStartColorInput"
-                value={progressStart}
-                onChange={(e) => setProgressStart(e.target.value)}
-                style={{ display: "none" }}
-              />
+             <input
+  type="color"
+  id="progressStartColorInput"
+  value={progressStart}
+  onChange={(e) => {
+    const val = e.target.value;
+    setProgressStart(val);
+    onChange?.("progressStart", val);
+  }}
+  style={{ display: "none" }}
+/>
+
             </Box>
 
             {/* Divider */}
@@ -383,13 +399,18 @@ export default function CustomizeColorSelector({ onChange, value }) {
                 End color
               </Text>
 
-              <input
-                type="color"
-                id="progressEndColorInput"
-                value={progressEnd}
-                onChange={(e) => setProgressEnd(e.target.value)}
-                style={{ display: "none" }}
-              />
+            <input
+  type="color"
+  id="progressEndColorInput"
+  value={progressEnd}
+  onChange={(e) => {
+    const val = e.target.value;
+    setProgressEnd(val);
+    onChange?.("progressEnd", val);
+  }}
+  style={{ display: "none" }}
+/>
+
             </Box>
           </InlineStack>
           <div style={{marginTop:"10px"}}>
