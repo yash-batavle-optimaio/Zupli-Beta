@@ -27,7 +27,8 @@ export default function App() {
         <Link to="/app/timer">Scarcity Timer</Link>
         <Link to="/app/cart-appearance">Cart Appearance</Link>
         <Link to="/app/settings">Settings</Link>
-        <Link to="/app/support">Support</Link>
+        <Link to="/app/billing">Billing</Link>
+        <Link to="/app/cart-drawer">Support</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>

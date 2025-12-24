@@ -40,7 +40,7 @@ async function setMetafield(admin, shopId, key, valueObj) {
 }
 
 /* ------------------ Helper: Ensure Automatic Discount Exists ------------------ */
-const DISCOUNT_FUNCTION_ID = process.env.TIERED_DISCOUNT_FUNCTION_ID; 
+const DISCOUNT_FUNCTION_ID = process.env.TIERED_DISCOUNT_FUNCTION_ID;
 const DISCOUNT_TITLE = "Optimaio Automatic Tier Discount";
 
 async function ensureAutomaticDiscountExists(admin) {
@@ -71,7 +71,7 @@ async function ensureAutomaticDiscountExists(admin) {
   const existing = data?.data?.discountNodes?.nodes?.find(
     (node) =>
       node?.discount?.title === DISCOUNT_TITLE &&
-      node?.discount?.appDiscountType?.functionId === DISCOUNT_FUNCTION_ID
+      node?.discount?.appDiscountType?.functionId === DISCOUNT_FUNCTION_ID,
   );
 
   if (existing) {
@@ -120,7 +120,7 @@ async function ensureAutomaticDiscountExists(admin) {
         orderDiscounts: true,
         productDiscounts: true,
         shippingDiscounts: true,
-      }
+      },
       // ⚠ You said: "keep discount settings as is"
       // → Not adding metafields/config here
     },
@@ -132,14 +132,14 @@ async function ensureAutomaticDiscountExists(admin) {
   if (createData.data?.discountAutomaticAppCreate?.userErrors?.length) {
     console.error(
       "⚠️ Automatic discount creation errors:",
-      createData.data.discountAutomaticAppCreate.userErrors
+      createData.data.discountAutomaticAppCreate.userErrors,
     );
     return null;
   }
 
   console.log(
     "✅ Discount created:",
-    createData.data.discountAutomaticAppCreate.automaticAppDiscount
+    createData.data.discountAutomaticAppCreate.automaticAppDiscount,
   );
 
   return createData.data.discountAutomaticAppCreate.automaticAppDiscount;
