@@ -21,34 +21,12 @@ import {
   ChartHistogramGrowthIcon,
 } from "@shopify/polaris-icons";
 import { useState } from "react";
-import { useLoaderData } from "@remix-run/react";
 import { PRICING_PLANS } from "./config/pricingPlans";
 import { authenticate } from "../shopify.server";
-import { json } from "@remix-run/node";
 
 export const loader = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
-
-  const query = `
-    query {
-      currentAppInstallation {
-        activeSubscriptions {
-          id
-          status
-        }
-      }
-    }
-  `;
-
-  const res = await admin.graphql(query);
-  const data = await res.json();
-
-  const hasActiveSubscription =
-    data.data.currentAppInstallation.activeSubscriptions.some(
-      (sub) => sub.status === "ACTIVE",
-    );
-
-  return json({ hasActiveSubscription });
+  await authenticate.admin(request);
+  return null;
 };
 /* ---------------- Plans Config ---------------- */
 const PLANS = PRICING_PLANS;
@@ -135,9 +113,7 @@ function PricingCard({ plan, billingCycle }) {
 }
 /* ---------------- Pricing Page ---------------- */
 export default function Pricing() {
-  const { hasActiveSubscription } = useLoaderData();
   const [billingCycle, setBillingCycle] = useState("monthly");
-
   return (
     <Page
       title={
@@ -177,26 +153,6 @@ export default function Pricing() {
                   Our pricing is flexible for merchants while ensuring
                   world-class service without compromise.
                 </Text>
-
-                {/* 🔥 Action Buttons */}
-                <InlineStack gap="300" align="center">
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      window.location.href = "/app/billing";
-                    }}
-                  >
-                    Subscribe
-                  </Button>
-
-                  <Button
-                    variant="secondary"
-                    tone="critical"
-                    disabled={!hasActiveSubscription}
-                  >
-                    Cancel plan
-                  </Button>
-                </InlineStack>
               </BlockStack>
             </InlineGrid>
             {/* Toggle (NO layout change) */}

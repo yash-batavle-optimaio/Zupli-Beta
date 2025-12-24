@@ -1,6 +1,11 @@
 import { json } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { Page, Card, Button } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 
+/* =========================
+   LOADER (SERVER)
+========================= */
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
@@ -25,10 +30,6 @@ export const loader = async ({ request }) => {
         test: true
       ) {
         confirmationUrl
-        appSubscription {
-          id
-          trialDays
-        }
         userErrors {
           message
         }
@@ -74,3 +75,24 @@ export const loader = async ({ request }) => {
     confirmationUrl: result.confirmationUrl,
   });
 };
+
+/* =========================
+   UI (CLIENT)
+========================= */
+export default function Subscribe() {
+  const { confirmationUrl } = useLoaderData();
+
+  const handleClick = () => {
+    window.open(confirmationUrl, "_top");
+  };
+
+  return (
+    <Page title="Subscription">
+      <Card sectioned>
+        <Button primary onClick={handleClick}>
+          Confirm Subscription
+        </Button>
+      </Card>
+    </Page>
+  );
+}
