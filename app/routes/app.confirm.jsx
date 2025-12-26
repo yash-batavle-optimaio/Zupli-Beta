@@ -13,6 +13,7 @@ export const loader = async ({ request }) => {
           status
           createdAt
           trialDays
+          returnUrl
           lineItems {
             id
             plan {
@@ -49,6 +50,7 @@ export const loader = async ({ request }) => {
   const response = await admin.graphql(query);
   const data = await response.json();
   // console.log("billing usages :++++", data);
+  console.log("Confirm page is woreking");
   console.log(JSON.stringify(data, null, 2));
 
   const subscription = data.data.currentAppInstallation.activeSubscriptions[0];

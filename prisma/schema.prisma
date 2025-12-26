@@ -1,13 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model Session {
@@ -28,15 +25,14 @@ model Session {
   emailVerified Boolean?  @default(false)
 }
 
-
 model CartEvent {
-  id          String   @id @default(cuid())
-  cartId      String
-  storeId     String
-  customerId  String?  // optional because guest carts have no customer
-  eventType   String
-  payload     Json
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  cartId     String
+  storeId    String
+  customerId String?
+  eventType  String
+  payload    Json
+  createdAt  DateTime @default(now())
 
   @@index([cartId])
   @@index([eventType])
@@ -44,17 +40,15 @@ model CartEvent {
   @@index([customerId])
 }
 
-
-
 model CartSession {
-  id          String   @id @default(cuid())
-  storeId     String
-  cartId      String   // hWN5jUcNU0...
-  cartKey     String?  // security key
-  customerId  String?  // logged in user OR null
-  email       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  storeId    String
+  cartId     String
+  cartKey    String?
+  customerId String?
+  email      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([storeId])
   @@index([customerId])
@@ -62,4 +56,32 @@ model CartSession {
 }
 
 
+model StoreInfo {
+  id                BigInt   @id @default(autoincrement())
+  storeId           String   @unique
+  firstInstalledAt  DateTime
+  lastInstalledAt   DateTime
+  trialUsed         Boolean  @default(false)
+  createdAt         DateTime? @default(now())
+  updatedAt         DateTime? @default(now())
 
+  @@map("stores_info")
+}
+
+
+model BillingOrder {
+  id            BigInt   @id @default(autoincrement())
+  storeId       String
+  orderId       String   @unique
+  orderNumber   String
+  billingCycle  String
+  currency      String
+  totalItems    Int
+  discountName  String?
+  location      String?
+  createdAt     DateTime
+  insertedAt    DateTime? @default(now())
+
+  @@index([storeId, billingCycle], name: "idx_billing_orders_store_cycle")
+  @@map("billing_orders")
+}

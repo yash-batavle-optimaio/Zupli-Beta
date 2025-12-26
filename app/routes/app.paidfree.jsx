@@ -23,37 +23,15 @@ import {
   cancelAppSubscription,
 } from "./utils/subscription.server";
 import { getActiveSubscription } from "./utils/getActiveSubscription.server";
-import { Toast, Frame } from "@shopify/polaris";
+import { Toast } from "@shopify/polaris";
 
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
+
   const activeSub = await getActiveSubscription(admin);
-
-  let activePlanId = "free";
-
-  if (activeSub) {
-    // ✅ Subscription exists → at least Standard
-    activePlanId = "standard";
-
-    const usageLineItem = activeSub.lineItems.find(
-      (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
-    );
-
-    const descriptions =
-      usageLineItem?.usageRecords?.edges.map((e) => e.node.description) || [];
-
-    if (descriptions.some((d) => d.includes("10000"))) {
-      activePlanId = "enterprise";
-    } else if (descriptions.some((d) => d.includes("5000"))) {
-      activePlanId = "grow";
-    } else if (descriptions.some((d) => d.includes("2000"))) {
-      activePlanId = "standard";
-    }
-  }
 
   return json({
     hasActiveSubscription: Boolean(activeSub),
-    activePlanId,
   });
 };
 
@@ -84,7 +62,7 @@ export const action = async ({ request }) => {
     const shop = url.searchParams.get("shop");
     const host = url.searchParams.get("host");
 
-    const returnUrl = `${process.env.APP_URL}/app/confirm?shop=${shop}&host=${host}`;
+    const returnUrl = `${process.env.APP_URL}/app/billing?shop=${shop}&host=${host}`;
 
     const confirmationUrl = await createAppSubscription({
       admin,
@@ -113,8 +91,7 @@ function FeatureItem({ label }) {
   );
 }
 /* ---------------- Pricing Card ---------------- */
-function PricingCard({ plan, billingCycle, activePlanId }) {
-  const isActive = plan.id === activePlanId;
+function PricingCard({ plan, billingCycle, hasActiveSubscription }) {
   const price =
     billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
   const yearlySavings = plan.monthlyPrice * 12 - plan.yearlyPrice;
@@ -154,7 +131,7 @@ function PricingCard({ plan, billingCycle, activePlanId }) {
                 {billingCycle === "yearly" ? "/Year" : "/Month"}
               </Text>
             </Text>
-            {isActive && <Badge tone="success">Active</Badge>}
+            {hasActiveSubscription && <Badge tone="success">Active</Badge>}
           </InlineStack>
 
           {/* 🔥 OFF PRICE (GREEN, BELOW PRICE) */}
@@ -167,7 +144,10 @@ function PricingCard({ plan, billingCycle, activePlanId }) {
             </InlineStack>
           )}
         </BlockStack>
-
+        {/* Button */}
+        <Button fullWidth variant="primary" disabled={plan.disabled}>
+          {plan.disabled ? "Current plan" : "Upgrade"}
+        </Button>
         {/* Divider */}
         <Box>
           <Divider />
@@ -182,10 +162,11 @@ function PricingCard({ plan, billingCycle, activePlanId }) {
     </Card>
   );
 }
+
 /* ---------------- Pricing Page ---------------- */
 export default function Pricing() {
   const fetcher = useFetcher();
-  const { hasActiveSubscription, activePlanId } = useLoaderData();
+  const { hasActiveSubscription } = useLoaderData();
 
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [toastActive, setToastActive] = useState(false);
@@ -213,21 +194,8 @@ export default function Pricing() {
   };
 
   return (
-    <Frame>
-      <Page
-        title={
-          <InlineStack gap="500" blockAlign="center">
-            <Button
-              icon={ArrowLeftIcon}
-              plain
-              onClick={() => window.history.back()}
-            />
-            <Text variant="headingLg" as="h2">
-              Pricing
-            </Text>
-          </InlineStack>
-        }
-      >
+    <>
+      <Page>
         <Box paddingBlockEnd="600">
           <Card>
             <BlockStack gap="600">
@@ -249,8 +217,8 @@ export default function Pricing() {
                     Select a plan
                   </Text>
                   <Text tone="subdued">
-                    Our pricing is flexible for merchants while ensuring
-                    world-class service without compromise.
+                    Would you like to continue with the paid plan or switch to
+                    the free plan?
                   </Text>
                 </BlockStack>
               </InlineGrid>
@@ -265,11 +233,16 @@ export default function Pricing() {
                 </Button>
 
                 <Button
-                  variant="primary"
-                  onClick={handleCancel}
-                  disabled={!hasActiveSubscription}
+                  variant="secondary"
+                  onClick={() => {
+                    const url = new URL(window.location.href);
+                    const shop = url.searchParams.get("shop");
+                    const host = url.searchParams.get("host");
+
+                    window.top.location.href = `/app/my-campaigns?shop=${shop}&host=${host}`;
+                  }}
                 >
-                  Switch to Free Plan
+                  No, continue
                 </Button>
               </InlineStack>
 
@@ -308,7 +281,7 @@ export default function Pricing() {
                       key={plan.id}
                       plan={plan}
                       billingCycle={billingCycle}
-                      activePlanId={activePlanId}
+                      hasActiveSubscription={hasActiveSubscription}
                     />
                   ))}
                 </InlineGrid>
@@ -318,6 +291,6 @@ export default function Pricing() {
         </Box>
       </Page>
       {toastActive && <Toast content={toastMessage} onDismiss={toggleToast} />}
-    </Frame>
+    </>
   );
 }
