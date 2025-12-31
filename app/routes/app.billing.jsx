@@ -13,7 +13,7 @@ export const loader = async ({ request }) => {
   const shop = url.searchParams.get("shop");
   const host = url.searchParams.get("host");
 
-  const RETURN_URL = `${process.env.APP_URL}/app/confirm?shop=${shop}&host=${host}`;
+  const RETURN_URL = `https://stylish-boost-valuable-location.trycloudflare.com/app/confirm?shop=${shop}&host=${host}`;
 
   const mutation = `
     mutation AppSubscriptionCreate(
