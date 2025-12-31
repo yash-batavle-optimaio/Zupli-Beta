@@ -10,10 +10,14 @@ export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
   const url = new URL(request.url);
-  const shop = url.searchParams.get("shop");
+  const shop = url.searchParams.get("shop"); // e.g. basic-optimaio-cart.myshopify.com
   const host = url.searchParams.get("host");
 
-  const RETURN_URL = `${process.env.APP_URL}/app/confirm?shop=${shop}&host=${host}`;
+  // ✅ Extract store handle dynamically
+  const storeHandle = shop.replace(".myshopify.com", "");
+
+  // ✅ Dynamic return URL (works for all stores)
+  const RETURN_URL = `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app/confirm?shop=${shop}&host=${host}`;
 
   const mutation = `
     mutation AppSubscriptionCreate(

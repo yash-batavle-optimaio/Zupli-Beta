@@ -3,11 +3,7 @@
  * Server-only helpers
  */
 
-export async function createAppSubscription({
-  admin,
-  returnUrl,
-  trialDays = 7,
-}) {
+export async function createAppSubscription({ admin, returnUrl, trialDays }) {
   const mutation = `
     mutation AppSubscriptionCreate(
       $name: String!

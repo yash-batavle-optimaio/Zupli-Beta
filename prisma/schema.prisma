@@ -59,9 +59,13 @@ model CartSession {
 model StoreInfo {
   id                BigInt   @id @default(autoincrement())
   storeId           String   @unique
+
   firstInstalledAt  DateTime
   lastInstalledAt   DateTime
+
   trialUsed         Boolean  @default(false)
+  trialEndsAt       DateTime?   // 👈 ADD THIS
+
   createdAt         DateTime? @default(now())
   updatedAt         DateTime? @default(now())
 
@@ -85,3 +89,27 @@ model BillingOrder {
   @@index([storeId, billingCycle], name: "idx_billing_orders_store_cycle")
   @@map("billing_orders")
 }
+
+
+model StoreUsage {
+  id                BigInt   @id @default(autoincrement())
+
+  storeId           String   
+  subscriptionId    String
+
+  cycleStart        DateTime
+  cycleEnd          DateTime
+
+  ordersCount       Int      @default(0)
+  usageAmount       Decimal  @default(0)
+
+  status            String   @default("OPEN") // OPEN | CLOSED
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([storeId, cycleStart])
+  @@map("store_usage")
+}
+

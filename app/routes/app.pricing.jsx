@@ -24,6 +24,7 @@ import {
 } from "./utils/subscription.server";
 import { getActiveSubscription } from "./utils/getActiveSubscription.server";
 import { Toast, Frame } from "@shopify/polaris";
+import prisma from "../db.server";
 
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
@@ -81,14 +82,39 @@ export const action = async ({ request }) => {
   // 🔥 SUBSCRIBE FLOW
   if (intent === "subscribe") {
     const url = new URL(request.url);
-    const shop = url.searchParams.get("shop");
+    const shop = url.searchParams.get("shop"); // e.g. basic-optimaio-cart.myshopify.com
     const host = url.searchParams.get("host");
 
-    const returnUrl = `${process.env.APP_URL}/app/confirm?shop=${shop}&host=${host}`;
+    // ✅ Extract store handle dynamically
+    const storeHandle = shop.replace(".myshopify.com", "");
 
+    // ✅ Dynamic return URL (works for all stores)
+    const returnUrl = `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app/confirm?shop=${shop}&host=${host}`;
+
+    /* 🔥 CHECK TRIAL STATUS */
+    const storeInfo = await prisma.storeInfo.findUnique({
+      where: { storeId: shop },
+      select: { trialUsed: true, trialEndsAt: true },
+    });
+
+    let trialDays = null;
+
+    const now = new Date();
+
+    if (!storeInfo) {
+      // First install ever
+      trialDays = 7;
+    } else if (storeInfo.trialEndsAt && now < storeInfo.trialEndsAt) {
+      // Resume remaining trial
+      const diffMs = storeInfo.trialEndsAt.getTime() - now.getTime();
+      trialDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    }
+
+    // Pass trialDays to Shopify
     const confirmationUrl = await createAppSubscription({
       admin,
       returnUrl,
+      trialDays, // null or remaining days
     });
 
     return json({ confirmationUrl });

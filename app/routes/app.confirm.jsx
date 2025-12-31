@@ -1,78 +1,185 @@
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
+import { createUsageCharge } from "./utils/createUsageCharge.server";
+
+const BILLING_CYCLE_DAYS = 30;
+const BASE_USAGE_AMOUNT = 15;
 
 export const loader = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const shop = session.shop;
+  const now = new Date();
 
-  const query = `
-    query GetSubscriptionUsage {
+  /* ----------------------------------
+     1️⃣ Get subscription (trial or paid)
+  ---------------------------------- */
+  const response = await admin.graphql(`
+    query {
       currentAppInstallation {
         activeSubscriptions {
           id
-          name
           status
           createdAt
           trialDays
-          returnUrl
           lineItems {
             id
             plan {
               pricingDetails {
                 __typename
-                ... on AppUsagePricing {
-                  cappedAmount {
-                    amount
-                    currencyCode
-                  }
-                  terms
-                }
-              }
-            }
-            usageRecords(first: 20) {
-              edges {
-                node {
-                  id
-                  description
-                  createdAt
-                  price {
-                    amount
-                    currencyCode
-                  }
-                }
               }
             }
           }
         }
       }
     }
-  `;
+  `);
 
-  const response = await admin.graphql(query);
   const data = await response.json();
-  // console.log("billing usages :++++", data);
-  console.log("Confirm page is woreking");
-  console.log(JSON.stringify(data, null, 2));
-
-  const subscription = data.data.currentAppInstallation.activeSubscriptions[0];
+  const subscription =
+    data?.data?.currentAppInstallation?.activeSubscriptions?.[0];
 
   if (!subscription) {
-    throw new Error("Subscription not active");
+    throw new Error("No subscription found");
   }
 
-  // 🔹 Extract usage records
+  /* ----------------------------------
+     2️⃣ TRIAL MODE (history-safe)
+  ---------------------------------- */
+  if (subscription.trialDays > 0) {
+    const trialStart = new Date(subscription.createdAt);
+    const trialEnd = new Date(trialStart);
+    trialEnd.setDate(trialEnd.getDate() + subscription.trialDays);
+
+    const existingTrial = await prisma.storeUsage.findFirst({
+      where: {
+        storeId: shop,
+        usageAmount: 0,
+        cycleEnd: { gt: now },
+        status: "OPEN",
+      },
+    });
+
+    if (!existingTrial) {
+      await prisma.storeUsage.create({
+        data: {
+          storeId: shop,
+          subscriptionId: subscription.id,
+          cycleStart: trialStart,
+          cycleEnd: trialEnd,
+          usageAmount: 0,
+          status: "OPEN",
+        },
+      });
+    }
+
+    const storeInfo = await prisma.storeInfo.findUnique({
+      where: { storeId: shop },
+    });
+
+    if (!storeInfo?.trialEndsAt) {
+      await prisma.storeInfo.upsert({
+        where: { storeId: shop },
+        update: {
+          trialUsed: true,
+          trialEndsAt: trialEnd,
+          lastInstalledAt: now,
+          updatedAt: now,
+        },
+        create: {
+          storeId: shop,
+          firstInstalledAt: now,
+          lastInstalledAt: now,
+          trialUsed: true,
+          trialEndsAt: trialEnd,
+        },
+      });
+    }
+
+    return json({
+      success: true,
+      trial: true,
+      trialStart,
+      trialEnd,
+      chargedThisCycle: false,
+    });
+  }
+
+  /* ----------------------------------
+     3️⃣ Usage pricing line item
+  ---------------------------------- */
   const usageLineItem = subscription.lineItems.find(
     (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
   );
 
-  const usageRecords =
-    usageLineItem?.usageRecords?.edges.map((e) => e.node) || [];
+  if (!usageLineItem) {
+    throw new Error("No usage pricing line item found");
+  }
 
-  // console.log("Usage records:", usageRecords);
+  /* ----------------------------------
+     4️⃣ Get latest billing cycle
+  ---------------------------------- */
+  const lastUsage = await prisma.storeUsage.findFirst({
+    where: { storeId: shop },
+    orderBy: { cycleEnd: "desc" },
+  });
+
+  let cycleStart;
+  let cycleEnd;
+  let shouldCharge = false;
+
+  if (!lastUsage) {
+    cycleStart = new Date(subscription.createdAt);
+    shouldCharge = true;
+  } else if (now > lastUsage.cycleEnd) {
+    cycleStart = new Date(lastUsage.cycleEnd);
+    shouldCharge = true;
+  } else {
+    return json({
+      success: true,
+      chargedThisCycle: false,
+      cycleStart: lastUsage.cycleStart,
+      cycleEnd: lastUsage.cycleEnd,
+    });
+  }
+
+  cycleEnd = new Date(cycleStart);
+  cycleEnd.setDate(cycleEnd.getDate() + BILLING_CYCLE_DAYS);
+
+  /* ----------------------------------
+     5️⃣ Charge + create cycle (ATOMIC)
+  ---------------------------------- */
+  await prisma.$transaction(async (tx) => {
+    if (lastUsage?.status === "OPEN") {
+      await tx.storeUsage.update({
+        where: { id: lastUsage.id },
+        data: { status: "CLOSED" },
+      });
+    }
+
+    await createUsageCharge({
+      admin,
+      subscriptionLineItemId: usageLineItem.id,
+      amount: BASE_USAGE_AMOUNT,
+      description: "Base usage fee (billing cycle)",
+    });
+
+    await tx.storeUsage.create({
+      data: {
+        storeId: shop,
+        subscriptionId: subscription.id,
+        cycleStart,
+        cycleEnd,
+        usageAmount: BASE_USAGE_AMOUNT,
+        status: "OPEN",
+      },
+    });
+  });
 
   return json({
-    subscriptionId: subscription.id,
-    status: subscription.status,
-    cappedAmount: usageLineItem?.plan.pricingDetails.cappedAmount || null,
-    usageRecords,
+    success: true,
+    chargedThisCycle: true,
+    cycleStart,
+    cycleEnd,
   });
 };

@@ -5,9 +5,7 @@ import {
   RewardIcon,
   OrganizationIcon,
   ChartHistogramGrowthIcon,
-
 } from "@shopify/polaris-icons";
-
 
 export const PRICING_PLANS = [
   {
