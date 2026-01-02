@@ -1,44 +1,52 @@
-// import { json } from "@remix-run/node";
-import { json, redirect } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { createUsageCharge } from "./utils/createUsageCharge.server";
 import { useLoaderData } from "@remix-run/react";
+import { redis } from "./utils/redis.server";
 
 const BILLING_CYCLE_DAYS = 30;
 const BASE_USAGE_AMOUNT = 15;
 
+/* ---------------- UI ---------------- */
 export default function BillingComplete() {
   const data = useLoaderData();
 
   useEffect(() => {
     if (data?.redirectTo) {
-      window.open(data.redirectTo, "_top"); // 🔥 REQUIRED
+      // 🔥 REQUIRED: escape Shopify iframe
+      window.open(data.redirectTo, "_top");
     }
   }, [data]);
 
   return null;
 }
 
+/* ---------------- Loader ---------------- */
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   const now = new Date();
 
+  const redirectToApp = () => {
+    const storeHandle = shop.replace(".myshopify.com", "");
+    return json({
+      redirectTo: `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app`,
+    });
+  };
+
   /* ----------------------------------
-     1️⃣ Get subscription (trial or paid)
+     1️⃣ Get subscription
   ---------------------------------- */
   const response = await admin.graphql(`
     query {
       currentAppInstallation {
         activeSubscriptions {
           id
-          status
           createdAt
           trialDays
           lineItems {
-            id
             plan {
               pricingDetails {
                 __typename
@@ -59,7 +67,7 @@ export const loader = async ({ request }) => {
   }
 
   /* ----------------------------------
-     2️⃣ TRIAL MODE (history-safe)
+     2️⃣ TRIAL MODE
   ---------------------------------- */
   if (subscription.trialDays > 0) {
     const trialStart = new Date(subscription.createdAt);
@@ -88,42 +96,30 @@ export const loader = async ({ request }) => {
       });
     }
 
-    const storeInfo = await prisma.storeInfo.findUnique({
+    await prisma.storeInfo.upsert({
       where: { storeId: shop },
+      update: {
+        trialUsed: true,
+        trialEndsAt: trialEnd,
+        lastInstalledAt: now,
+        updatedAt: now,
+      },
+      create: {
+        storeId: shop,
+        firstInstalledAt: now,
+        lastInstalledAt: now,
+        trialUsed: true,
+        trialEndsAt: trialEnd,
+      },
     });
 
-    if (!storeInfo?.trialEndsAt) {
-      await prisma.storeInfo.upsert({
-        where: { storeId: shop },
-        update: {
-          trialUsed: true,
-          trialEndsAt: trialEnd,
-          lastInstalledAt: now,
-          updatedAt: now,
-        },
-        create: {
-          storeId: shop,
-          firstInstalledAt: now,
-          lastInstalledAt: now,
-          trialUsed: true,
-          trialEndsAt: trialEnd,
-        },
-      });
-    }
-
-    // return json({
-    //   success: true,
-    //   trial: true,
-    //   trialStart,
-    //   trialEnd,
-    //   chargedThisCycle: false,
-    // });
-    // ✅ Extract store handle dynamically
-    const storeHandle = shop.replace(".myshopify.com", "");
-
-    return json({
-      redirectTo: `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app`,
+    // 🔥 Store store + expiry (trial)
+    await redis.zAdd("store_expiry_queue", {
+      score: trialEnd.getTime(),
+      value: shop,
     });
+
+    return redirectToApp();
   }
 
   /* ----------------------------------
@@ -138,7 +134,7 @@ export const loader = async ({ request }) => {
   }
 
   /* ----------------------------------
-     4️⃣ Get latest billing cycle
+     4️⃣ Billing cycle resolution
   ---------------------------------- */
   const lastUsage = await prisma.storeUsage.findFirst({
     where: { storeId: shop },
@@ -147,28 +143,26 @@ export const loader = async ({ request }) => {
 
   let cycleStart;
   let cycleEnd;
-  let shouldCharge = false;
 
   if (!lastUsage) {
     cycleStart = new Date(subscription.createdAt);
-    shouldCharge = true;
   } else if (now > lastUsage.cycleEnd) {
     cycleStart = new Date(lastUsage.cycleEnd);
-    shouldCharge = true;
   } else {
-    return json({
-      success: true,
-      chargedThisCycle: false,
-      cycleStart: lastUsage.cycleStart,
-      cycleEnd: lastUsage.cycleEnd,
+    // 🔥 No charge needed, still enqueue expiry
+    await redis.zAdd("store_expiry_queue", {
+      score: lastUsage.cycleEnd.getTime(),
+      value: shop,
     });
+
+    return redirectToApp();
   }
 
   cycleEnd = new Date(cycleStart);
   cycleEnd.setDate(cycleEnd.getDate() + BILLING_CYCLE_DAYS);
 
   /* ----------------------------------
-     5️⃣ Charge + create cycle (ATOMIC)
+     5️⃣ Charge + create new cycle
   ---------------------------------- */
   await prisma.$transaction(async (tx) => {
     if (lastUsage?.status === "OPEN") {
@@ -197,16 +191,11 @@ export const loader = async ({ request }) => {
     });
   });
 
-  // return json({
-  //   success: true,
-  //   chargedThisCycle: true,
-  //   cycleStart,
-  //   cycleEnd,
-  // });
-
-  const storeHandle = shop.replace(".myshopify.com", "");
-
-  return json({
-    redirectTo: `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app`,
+  // 🔥 Store store + expiry (paid)
+  await redis.zAdd("store_expiry_queue", {
+    score: cycleEnd.getTime(),
+    value: shop,
   });
+
+  return redirectToApp();
 };

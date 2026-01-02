@@ -59,7 +59,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
 
@@ -82,8 +82,11 @@ export const action = async ({ request }) => {
   // 🔥 SUBSCRIBE FLOW
   if (intent === "subscribe") {
     const url = new URL(request.url);
-    const shop = url.searchParams.get("shop"); // e.g. basic-optimaio-cart.myshopify.com
-    const host = url.searchParams.get("host");
+    // const shop = url.searchParams.get("shop"); // e.g. basic-optimaio-cart.myshopify.com
+    // const host = url.searchParams.get("host");
+
+    const shop = session.shop; // ✅ ALWAYS present
+    const host = session.host; // ✅ ALWAYS present
 
     // ✅ Extract store handle dynamically
     const storeHandle = shop.replace(".myshopify.com", "");
