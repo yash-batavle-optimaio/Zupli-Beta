@@ -1,10 +1,25 @@
-import { json } from "@remix-run/node";
+// import { json } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
+import { useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { createUsageCharge } from "./utils/createUsageCharge.server";
+import { useLoaderData } from "@remix-run/react";
 
 const BILLING_CYCLE_DAYS = 30;
 const BASE_USAGE_AMOUNT = 15;
+
+export default function BillingComplete() {
+  const data = useLoaderData();
+
+  useEffect(() => {
+    if (data?.redirectTo) {
+      window.open(data.redirectTo, "_top"); // 🔥 REQUIRED
+    }
+  }, [data]);
+
+  return null;
+}
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
@@ -96,12 +111,18 @@ export const loader = async ({ request }) => {
       });
     }
 
+    // return json({
+    //   success: true,
+    //   trial: true,
+    //   trialStart,
+    //   trialEnd,
+    //   chargedThisCycle: false,
+    // });
+    // ✅ Extract store handle dynamically
+    const storeHandle = shop.replace(".myshopify.com", "");
+
     return json({
-      success: true,
-      trial: true,
-      trialStart,
-      trialEnd,
-      chargedThisCycle: false,
+      redirectTo: `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app`,
     });
   }
 
@@ -176,10 +197,16 @@ export const loader = async ({ request }) => {
     });
   });
 
+  // return json({
+  //   success: true,
+  //   chargedThisCycle: true,
+  //   cycleStart,
+  //   cycleEnd,
+  // });
+
+  const storeHandle = shop.replace(".myshopify.com", "");
+
   return json({
-    success: true,
-    chargedThisCycle: true,
-    cycleStart,
-    cycleEnd,
+    redirectTo: `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app`,
   });
 };
