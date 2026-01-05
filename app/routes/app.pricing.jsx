@@ -117,7 +117,7 @@ export const action = async ({ request }) => {
     const confirmationUrl = await createAppSubscription({
       admin,
       returnUrl,
-      trialDays, // null or remaining days
+      trialDays: 0, // null or remaining days
     });
 
     return json({ confirmationUrl });

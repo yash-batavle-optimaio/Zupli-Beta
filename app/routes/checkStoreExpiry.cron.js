@@ -5,55 +5,66 @@ async function checkStoreExpiry() {
   const now = Date.now();
 
   try {
-    const expiredStores = await redis.zRangeByScore(
+    // 🔥 Get ONLY the earliest expiry (queue head)
+    const entries = await redis.zRangeWithScores(
       "store_expiry_queue",
       0,
-      now,
-      { WITHSCORES: true },
+      0, // top element only
     );
 
-    if (!Array.isArray(expiredStores) || expiredStores.length === 0) {
-      console.log("⏳ No expired stores. now(ms):", now);
+    if (!Array.isArray(entries) || entries.length === 0) {
+      console.log("⏳ Queue empty. now(ms):", now);
       return;
     }
 
-    console.log("⚠️ Expired stores found (raw):", expiredStores);
+    const { value: storeId, score } = entries[0];
+    const expiryMs = Number(score);
 
-    const storesToRemove = [];
+    // 🚨 Hard guard
+    if (!storeId || !Number.isFinite(expiryMs)) {
+      console.error("❌ Corrupted queue entry:", entries[0]);
 
-    for (let i = 0; i < expiredStores.length; i += 2) {
-      const storeId = expiredStores[i];
-      const rawScore = expiredStores[i + 1];
+      // Remove corrupted entry to unblock queue
+      await redis.zRem("store_expiry_queue", storeId);
+      return;
+    }
 
-      const expiryMs = Number(rawScore);
-
-      // HARD GUARD — NOTHING UNSAFE BELOW THIS
-      if (!storeId || !Number.isFinite(expiryMs)) {
-        console.error("❌ Corrupted Redis entry skipped:", {
-          storeId,
-          rawScore,
-        });
-        continue;
-      }
-
-      console.log("🛑 Store expired:", {
+    // ⏱️ Not expired yet → stop
+    if (expiryMs > now) {
+      console.log("⏳ Earliest store not expired yet:", {
         storeId,
         expiryMs,
+        now,
       });
-
-      storesToRemove.push(storeId);
+      return;
     }
 
-    if (storesToRemove.length > 0) {
-      await redis.zRem("store_expiry_queue", ...storesToRemove);
-      console.log("✅ Removed expired stores:", storesToRemove);
-    }
+    // 🛑 EXPIRED — process it
+    console.log("🛑 Store expired:", {
+      storeId,
+      expiryMs,
+      expiryUTC: new Date(expiryMs).toISOString(),
+    });
+
+    // 🔥 Remove ONLY this store from queue
+    // await redis.zRem("store_expiry_queue", storeId);
+
+    console.log("✅ Removed expired store:", storeId);
+
+    // 🔁 (Optional future logic)
+    // - Flush Redis orders → Postgres
+    // - Close StoreUsage cycle
+    // - Create usage charge
+    // - Notify merchant
   } catch (err) {
     console.error("❌ Cron error (checkStoreExpiry):", err);
   }
 }
 
-cron.schedule("*/1 * * * *", () => {
+/* ----------------------------------
+   Run every 1 minute
+---------------------------------- */
+cron.schedule("* * * * *", () => {
   console.log("⏰ Running store expiry cron...");
   checkStoreExpiry();
 });
