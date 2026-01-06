@@ -114,10 +114,12 @@ export const loader = async ({ request }) => {
         data: {
           storeId: shop,
           subscriptionId: subscription.id,
+          subscriptionLineItemId: usageLineItem.id,
           cycleStart: trialStart,
           cycleEnd: trialEnd,
           usageAmount: 0,
           status: "OPEN",
+          appliedTier: "TRIAL",
         },
       });
     }
@@ -127,8 +129,8 @@ export const loader = async ({ request }) => {
       await prisma.storeInfo.create({
         data: {
           storeId: shop,
-          firstInstalledAt: now,
-          lastInstalledAt: now,
+          // firstInstalledAt: now,
+          // lastInstalledAt: now,
           trialUsed: true,
           trialEndsAt: trialEnd,
         },
@@ -138,19 +140,23 @@ export const loader = async ({ request }) => {
         where: { storeId: shop },
         data: {
           trialUsed: true,
-          lastInstalledAt: now,
-          updatedAt: now,
+          // lastInstalledAt: now,
+          // updatedAt: now,
           // ⛔ DO NOT update trialEndsAt
         },
       });
     }
 
-    // 🔐 Redis tier (NX = never overwrite)
-    const redisTierKey = `applied_tier:${shop}:${trialEnd.toISOString()}`;
+    // Single source of truth key
+    const redisTierKey = `applied_tier:${shop}`;
 
+    // TTL = trial end (+ 1 hour buffer)
+    const ttlSeconds =
+      Math.ceil((trialEnd.getTime() - Date.now()) / 1000) + 3600;
+
+    // Always set (safe overwrite)
     await redis.set(redisTierKey, "TRIAL", {
-      NX: true,
-      EX: Math.ceil((trialEnd.getTime() - Date.now()) / 1000) + 3600,
+      EX: ttlSeconds,
     });
 
     // ⏳ Expiry queue
@@ -179,42 +185,14 @@ export const loader = async ({ request }) => {
    4️⃣ Billing cycle (SIMPLE + SAFE)
 ---------------------------------- */
 
-  // 🔒 Check if cycle already exists for this subscription
-  const existingCycle = await prisma.storeUsage.findFirst({
-    where: {
-      storeId: shop,
-      status: "OPEN",
-      cycleEnd: { gt: now },
-    },
-  });
-
-  if (existingCycle) {
-    // 1️⃣ Determine highest tier from DB (future-proof)
-    const highestTier = existingCycle.appliedTier ?? "STANDARD";
-
-    // 2️⃣ Redis tier key tied to cycle end (idempotent)
-    const redisTierKey = `applied_tier:${shop}:${existingCycle.cycleEnd.toISOString()}`;
-
-    // 3️⃣ Set Redis ONLY if not already set (NX)
-    await redis.set(redisTierKey, highestTier, {
-      NX: true, // 🔒 idempotent
-      EX:
-        Math.ceil((existingCycle.cycleEnd.getTime() - Date.now()) / 1000) +
-        3600,
-    });
-
-    // 4️⃣ Ensure expiry queue is correct
-    await redis.zAdd("store_expiry_queue", {
-      score: existingCycle.cycleEnd.getTime(),
-      value: shop,
-    });
-
-    return redirectToApp();
-  }
-
   // ✅ ALWAYS start from subscription.createdAt
-  const cycleStart = new Date(subscription.createdAt);
-  const cycleEnd = new Date(cycleStart);
+  // const cycleStart = new Date(subscription.createdAt);
+  // const cycleEnd = new Date(cycleStart);
+  // cycleEnd.setUTCDate(cycleEnd.getUTCDate() + BILLING_CYCLE_DAYS);
+
+  // ✅ ALWAYS start a fresh paid cycle
+  const cycleStart = now;
+  const cycleEnd = new Date(now);
   cycleEnd.setUTCDate(cycleEnd.getUTCDate() + BILLING_CYCLE_DAYS);
 
   /* ----------------------------------
@@ -232,6 +210,7 @@ export const loader = async ({ request }) => {
       data: {
         storeId: shop,
         subscriptionId: subscription.id,
+        subscriptionLineItemId: usageLineItem?.id ?? null,
         cycleStart,
         cycleEnd,
         usageAmount: BASE_USAGE_AMOUNT,
@@ -241,10 +220,15 @@ export const loader = async ({ request }) => {
     });
   });
 
-  const redisTierKey = `applied_tier:${shop}:${cycleEnd.toISOString()}`;
+  const redisTierKey = `applied_tier:${shop}`;
 
+  // TTL = paid cycle end (+ 1 hour buffer)
+  const paidCycleTTL =
+    Math.ceil((cycleEnd.getTime() - Date.now()) / 1000) + 3600;
+
+  // Always overwrite with latest paid tier
   await redis.set(redisTierKey, "STANDARD", {
-    EX: Math.ceil((cycleEnd.getTime() - Date.now()) / 1000) + 3600,
+    EX: paidCycleTTL,
   });
 
   // 🔥 Store store + expiry (paid)

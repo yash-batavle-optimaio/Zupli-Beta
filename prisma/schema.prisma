@@ -96,6 +96,7 @@ model StoreUsage {
 
   storeId           String   
   subscriptionId    String
+  subscriptionLineItemId String?
 
   cycleStart        DateTime
   cycleEnd          DateTime
@@ -103,7 +104,7 @@ model StoreUsage {
   ordersCount       Int      @default(0)
   usageAmount       Decimal  @default(0)
   
-  appliedTier       String   @default("BASE")
+  appliedTier       String   
   status            String   @default("OPEN") // OPEN | CLOSED
 
   createdAt         DateTime @default(now())
