@@ -24,7 +24,6 @@ export const action = async ({ request }) => {
     storeId,
     currency: payload.currency,
     totalItems: payload.line_items.length,
-    locationId: payload.location_id ?? null,
     createdAt: payload.created_at,
   });
 

@@ -29,13 +29,6 @@ export const loader = async ({ request }) => {
   const shop = session.shop;
   const now = new Date();
 
-  const TIER_PRIORITY = {
-    TRIAL: 0,
-    STANDARD: 1,
-    GROW: 2,
-    ENTERPRISE: 3,
-  };
-
   const storeInfo = await prisma.storeInfo.findUnique({
     where: { storeId: shop },
   });
