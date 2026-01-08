@@ -5,60 +5,61 @@ export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
 
   const response = await admin.graphql(`
-    query AppSubscriptionsWithUsage {
-      currentAppInstallation {
-        activeSubscriptions {
-          id
-          name
-          status
-          createdAt
-          trialDays
+   query AppSubscriptionsWithUsage {
+  currentAppInstallation {
+    activeSubscriptions {
+      id
+      name
+      status
+      createdAt
+      trialDays
 
-          lineItems {
-            id  # 🔥 IMPORTANT: used in createUsageCharge
+      lineItems {
+        id  # used in createUsageCharge
 
-            plan {
-              pricingDetails {
-                __typename
+        plan {
+          pricingDetails {
+            __typename
 
-                # Recurring pricing
-                ... on AppRecurringPricing {
-                  price {
-                    amount
-                    currencyCode
-                  }
-                  interval
-                }
-
-                # Usage pricing (NO usageRecords here)
-                ... on AppUsagePricing {
-                  cappedAmount {
-                    amount
-                    currencyCode
-                  }
-                  terms
-                }
+            # Recurring pricing
+            ... on AppRecurringPricing {
+              price {
+                amount
+                currencyCode
               }
+              interval
             }
 
-            # ✅ CORRECT PLACE FOR USAGE RECORDS
-            usageRecords(first: 50) {
-              edges {
-                node {
-                  id
-                  description
-                  createdAt
-                  price {
-                    amount
-                    currencyCode
-                  }
-                }
+            # Usage pricing
+            ... on AppUsagePricing {
+              cappedAmount {
+                amount
+                currencyCode
+              }
+              terms
+            }
+          }
+        }
+
+        # Latest 5 usage records (ordered by CREATED_AT, descending)
+        usageRecords(first: 3, reverse: true) {
+          edges {
+            node {
+              id
+              description
+              idempotencyKey
+              createdAt
+              price {
+                amount
+                currencyCode
               }
             }
           }
         }
       }
     }
+  }
+}
   `);
 
   const result = await response.json();

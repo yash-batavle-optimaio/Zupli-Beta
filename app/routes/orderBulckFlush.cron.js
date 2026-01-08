@@ -73,3 +73,10 @@ cron.schedule("*/60 * * * *", async () => {
   console.log("⏰ Running hourly order flush cron...");
   await flushOrdersToDBHourly();
 });
+
+// For manual triggering
+// ✅ Correct named export
+export async function flushOrdersToDBHourlyManual() {
+  console.log("⏰ Manually Running order flush cron...");
+  await flushOrdersToDBHourly();
+}

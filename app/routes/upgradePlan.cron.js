@@ -2,6 +2,7 @@ import cron from "node-cron";
 import prisma from "../db.server";
 import { redis } from "./utils/redis.server";
 import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
+import crypto from "node:crypto";
 
 /* ---------------- Debug Helper ---------------- */
 
@@ -26,11 +27,6 @@ function debug(label, data = {}) {
 const GROW_THRESHOLD = 2000;
 const ENTERPRISE_THRESHOLD = 5000;
 
-const GROW_CHARGE = 20;
-const ENTERPRISE_CHARGE = 30;
-
-const BASE_USAGE_AMOUNT = 0;
-
 /* ---------------- Shopify Mutation ---------------- */
 
 const CHARGE_MUTATION = `
@@ -38,11 +34,13 @@ const CHARGE_MUTATION = `
     $subscriptionLineItemId: ID!
     $price: MoneyInput!
     $description: String!
+    $idempotencyKey: String!
   ) {
     appUsageRecordCreate(
       subscriptionLineItemId: $subscriptionLineItemId
       price: $price
       description: $description
+      idempotencyKey: $idempotencyKey
     ) {
       appUsageRecord { id }
       userErrors { message }
@@ -53,8 +51,6 @@ const CHARGE_MUTATION = `
 /* ---------------- Main Job ---------------- */
 
 async function orderBasedBilling() {
-  console.log("📊 Running order-based billing cron...");
-
   try {
     const openCycles = await prisma.storeUsage.findMany({
       where: { status: "OPEN" },
@@ -71,45 +67,164 @@ async function orderBasedBilling() {
         subscriptionLineItemId,
       } = cycle;
 
+      /* ---------- DISTRIBUTED LOCK ---------- */
+
       const lockKey = `order_billing_lock:${storeId}`;
-      const lock = await redis.set(lockKey, "1", { NX: true, EX: 180 });
+      const lockValue = crypto.randomUUID();
+
+      const lock = await redis.set(lockKey, lockValue, { NX: true, EX: 180 });
       if (!lock) continue;
 
       try {
-        /* ---------- Order Count (Redis Counter) ---------- */
+        /* ---------- DISCOUNT LOOKUP DEBUG ---------- */
+
+        const discount = await prisma.storeDiscount.findFirst({
+          where: {
+            storeId,
+            isActive: true,
+            cycleStart: { lte: cycleEnd },
+            cycleEnd: { gte: cycleStart },
+          },
+        });
+
+        debug("Discount lookup", {
+          storeId,
+          billingCycle: {
+            start: cycleStart,
+            end: cycleEnd,
+          },
+          discountFound: !!discount,
+          discount,
+        });
+
+        /* ---------- ORDER COUNT ---------- */
 
         const rawCount = await redis.get(`order_count:${storeId}`);
         const orderCount = Number(rawCount || 0);
 
-        let nextTier = null;
-        let chargeAmount = 0;
+        debug("Order count", { storeId, orderCount });
 
-        if (appliedTier === "STANDARD" && orderCount > GROW_THRESHOLD) {
-          nextTier = "GROW";
-          chargeAmount = GROW_CHARGE;
-        } else if (
-          appliedTier === "GROW" &&
-          orderCount > ENTERPRISE_THRESHOLD
-        ) {
-          nextTier = "ENTERPRISE";
-          chargeAmount = ENTERPRISE_CHARGE;
-        } else {
+        if (orderCount === 0) {
+          debug("Skipping billing – zero orders", { storeId });
           continue;
         }
 
-        debug("Tier upgrade detected", {
+        /* ---------- TIER RESOLUTION ---------- */
+
+        function resolveTier(count) {
+          if (count > ENTERPRISE_THRESHOLD) return "ENTERPRISE";
+          if (count > GROW_THRESHOLD) return "GROW";
+          return "STANDARD";
+        }
+
+        const TIER_RANK = {
+          STANDARD: 0,
+          GROW: 1,
+          ENTERPRISE: 2,
+        };
+
+        const TIER_TOTAL_PRICE = {
+          STANDARD: 15,
+          GROW: 40,
+          ENTERPRISE: 50,
+        };
+
+        const eligibleTier = resolveTier(orderCount);
+        const currentTier = appliedTier || "STANDARD";
+
+        debug("Tier evaluation", {
           storeId,
-          from: appliedTier,
-          to: nextTier,
           orderCount,
+          currentTier,
+          eligibleTier,
         });
 
-        /* ---------- Shopify Usage Charge ---------- */
+        if (eligibleTier === "STANDARD") continue;
+        if (TIER_RANK[eligibleTier] <= TIER_RANK[currentTier]) continue;
+
+        const previousTotal = TIER_TOTAL_PRICE[currentTier] || 0;
+        const newTotal = TIER_TOTAL_PRICE[eligibleTier];
+        let chargeAmount = newTotal - previousTotal;
+
+        debug("Charge BEFORE discount", {
+          storeId,
+          previousTotal,
+          newTotal,
+          chargeAmount,
+        });
+
+        /* ---------- APPLY DISCOUNT ---------- */
+
+        if (discount) {
+          if (discount.discountType === "FLAT") {
+            debug("Applying FLAT discount", {
+              storeId,
+              discountValue: discount.discountValue,
+            });
+            chargeAmount -= discount.discountValue;
+          }
+
+          if (discount.discountType === "PERCENT") {
+            const discountValue = Math.floor(
+              (chargeAmount * discount.discountValue) / 100,
+            );
+
+            debug("Applying PERCENT discount", {
+              storeId,
+              percent: discount.discountValue,
+              calculatedDiscount: discountValue,
+            });
+
+            chargeAmount -= discountValue;
+          }
+        } else {
+          debug("No discount applied", { storeId });
+        }
+
+        debug("Charge AFTER discount", {
+          storeId,
+          finalCharge: chargeAmount,
+        });
+
+        if (chargeAmount <= 0) {
+          debug("Skipping billing – charge <= 0 after discount", {
+            storeId,
+            chargeAmount,
+          });
+          continue;
+        }
+
+        /* ---------- IDENTITY DEBUG ---------- */
+
+        const idempotencyKey = [
+          "order-upgrade",
+          storeId,
+          cycleStart.toISOString(),
+          cycleEnd.toISOString(),
+          eligibleTier,
+          Math.floor(Math.random() * 900 + 100),
+        ].join(":");
+
+        debug("Prepared Shopify charge", {
+          storeId,
+          chargeAmount,
+          idempotencyKey,
+        });
+
+        /* ---------- SHOPIFY CALL ---------- */
 
         const offlineSession = await prisma.session.findFirst({
           where: { shop: storeId, isOnline: false },
         });
-        if (!offlineSession) continue;
+
+        if (!offlineSession || !subscriptionLineItemId) {
+          debug("Missing Shopify prerequisites", {
+            storeId,
+            hasSession: !!offlineSession,
+            subscriptionLineItemId,
+          });
+          continue;
+        }
 
         const result = await callShopAdminGraphQL({
           shopDomain: storeId,
@@ -117,11 +232,9 @@ async function orderBasedBilling() {
           query: CHARGE_MUTATION,
           variables: {
             subscriptionLineItemId,
-            price: {
-              amount: chargeAmount,
-              currencyCode: "USD",
-            },
-            description: `Upgrade to ${nextTier} plan`,
+            price: { amount: chargeAmount, currencyCode: "USD" },
+            description: `Upgrade to ${eligibleTier} plan`,
+            idempotencyKey,
           },
         });
 
@@ -132,16 +245,11 @@ async function orderBasedBilling() {
         /* ---------- DB TRANSACTION ---------- */
 
         await prisma.$transaction(async (tx) => {
-          // 1️⃣ Close old usage + store order count snapshot
           await tx.storeUsage.update({
             where: { id: openCycleId },
-            data: {
-              status: "CLOSED",
-              // orderCount, // ✅ snapshot from Redis
-            },
+            data: { status: "CLOSED" },
           });
 
-          // 2️⃣ Create new OPEN usage (same cycle, new tier)
           await tx.storeUsage.create({
             data: {
               storeId,
@@ -150,26 +258,45 @@ async function orderBasedBilling() {
               cycleStart,
               cycleEnd,
               usageAmount: chargeAmount,
-              ordersCount: orderCount, // ✅ carried forward snapshot
+              ordersCount: orderCount,
               status: "OPEN",
-              appliedTier: nextTier,
+              appliedTier: eligibleTier,
             },
           });
         });
 
-        /* ---------- Redis Tier Cache ---------- */
+        if (discount) {
+          await prisma.storeDiscount.update({
+            where: { id: discount.id },
+            data: { usedAt: new Date(), isActive: false },
+          });
+
+          debug("Discount marked as used", {
+            storeId,
+            discountId: discount.id,
+          });
+        }
+
+        /* ✅ PUT REDIS WRITE HERE */
 
         const ttl = Math.ceil((cycleEnd.getTime() - Date.now()) / 1000) + 3600;
 
-        await redis.set(`applied_tier:${storeId}`, nextTier, { EX: ttl });
+        await redis.set(`applied_tier:${storeId}`, eligibleTier, { EX: ttl });
 
-        console.log("✅ Billing cycle rolled & order count stored", {
+        debug("Redis tier updated", {
           storeId,
-          nextTier,
+          eligibleTier,
+          ttl,
+        });
+
+        console.log("✅ Billing cycle rolled", {
+          storeId,
+          eligibleTier,
           orderCount,
         });
       } finally {
-        await redis.del(lockKey);
+        const current = await redis.get(lockKey);
+        if (current === lockValue) await redis.del(lockKey);
       }
     }
   } catch (err) {
@@ -180,5 +307,11 @@ async function orderBasedBilling() {
 /* ---------------- Cron ---------------- */
 
 cron.schedule("*/60 * * * *", async () => {
+  console.log("📊 Running order-based billing cron...");
   await orderBasedBilling();
 });
+
+export async function runUpgradePlan() {
+  console.log("⏰ Manually Running order-based billing cron...");
+  await orderBasedBilling();
+}

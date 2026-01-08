@@ -155,7 +155,13 @@ async function checkStoreExpiry() {
 /* ----------------------------------
    Run every minute
 ---------------------------------- */
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("*/60 * * * *", async () => {
   console.log("⏰ Running store expiry cron...");
   await checkStoreExpiry();
 });
+
+// For manual triggering
+export async function runRenewExpieredPlan() {
+  console.log("⏰ Manually Running store expiry cron...");
+  await checkStoreExpiry();
+}
