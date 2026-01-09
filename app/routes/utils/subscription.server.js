@@ -3,6 +3,8 @@
  * Server-only helpers
  */
 
+import SUBSCRIPTION_CONFIG from "../config/billingPlans";
+
 export async function createAppSubscription({ admin, returnUrl, trialDays }) {
   const mutation = `
     mutation AppSubscriptionCreate(
@@ -10,13 +12,14 @@ export async function createAppSubscription({ admin, returnUrl, trialDays }) {
       $returnUrl: URL!
       $trialDays: Int
       $lineItems: [AppSubscriptionLineItemInput!]!
+      $test: Boolean!
     ) {
       appSubscriptionCreate(
         name: $name
         returnUrl: $returnUrl
         trialDays: $trialDays
         lineItems: $lineItems
-        test: true
+        test: $test
       ) {
         confirmationUrl
         userErrors {
@@ -30,19 +33,26 @@ export async function createAppSubscription({ admin, returnUrl, trialDays }) {
     name: "Order-Based Pricing",
     returnUrl,
     trialDays,
+    test: SUBSCRIPTION_CONFIG.isTestMode,
     lineItems: [
       {
         plan: {
           appRecurringPricingDetails: {
-            price: { amount: 0, currencyCode: "USD" },
-            interval: "EVERY_30_DAYS",
+            price: {
+              amount: 0,
+              currencyCode: SUBSCRIPTION_CONFIG.currencyCode,
+            },
+            interval: SUBSCRIPTION_CONFIG.intervalDays,
           },
         },
       },
       {
         plan: {
           appUsagePricingDetails: {
-            cappedAmount: { amount: 74.99, currencyCode: "USD" },
+            cappedAmount: {
+              amount: SUBSCRIPTION_CONFIG.cappedAmount,
+              currencyCode: SUBSCRIPTION_CONFIG.currencyCode,
+            },
             terms: "Monthly pricing based on order volume.",
           },
         },

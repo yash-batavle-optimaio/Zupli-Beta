@@ -25,6 +25,7 @@ import {
 import { getActiveSubscription } from "./utils/getActiveSubscription.server";
 import { Toast, Frame } from "@shopify/polaris";
 import prisma from "../db.server";
+import { TRIAL_DAYS } from "./config/billingPlans";
 
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
@@ -106,7 +107,7 @@ export const action = async ({ request }) => {
 
     if (!storeInfo) {
       // First install ever
-      trialDays = 7;
+      trialDays = TRIAL_DAYS;
     } else if (storeInfo.trialEndsAt && now < storeInfo.trialEndsAt) {
       // Resume remaining trial
       const diffMs = storeInfo.trialEndsAt.getTime() - now.getTime();

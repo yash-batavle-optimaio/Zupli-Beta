@@ -3,10 +3,11 @@ import prisma from "../db.server";
 import { redis } from "./utils/redis.server";
 import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
 import crypto from "node:crypto";
+import { BILLING_PLANS, BILLING_DAYS } from "./config/billingPlans";
 
-const BILLING_CYCLE_DAYS = 30;
-const BASE_USAGE_AMOUNT = 15;
-const RENEWAL_PLAN = "STANDARD";
+const BILLING_CYCLE_DAYS = BILLING_DAYS;
+const BASE_USAGE_AMOUNT = BILLING_PLANS.STANDARD.basePrice;
+const RENEWAL_PLAN = BILLING_PLANS.STANDARD.key;
 
 async function checkStoreExpiry() {
   const now = Date.now();

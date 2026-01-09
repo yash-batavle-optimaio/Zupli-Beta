@@ -5,9 +5,10 @@ import prisma from "../db.server";
 import { createUsageCharge } from "./utils/createUsageCharge.server";
 import { useLoaderData } from "@remix-run/react";
 import { redis } from "./utils/redis.server";
+import { BILLING_PLANS, BILLING_DAYS } from "./config/billingPlans";
 
-const BILLING_CYCLE_DAYS = 30;
-const BASE_USAGE_AMOUNT = 15;
+const BILLING_CYCLE_DAYS = BILLING_DAYS;
+const BASE_USAGE_AMOUNT = BILLING_PLANS.STANDARD.basePrice;
 
 /* ---------------- UI ---------------- */
 export default function BillingComplete() {
@@ -231,6 +232,17 @@ export const loader = async ({ request }) => {
      5️⃣ Charge + create new cycle
   ---------------------------------- */
   await prisma.$transaction(async (tx) => {
+    // 🔒 CLOSE any existing OPEN cycles (safety)
+    await tx.storeUsage.updateMany({
+      where: {
+        storeId: shop,
+        status: "OPEN",
+      },
+      data: {
+        status: "CLOSED",
+      },
+    });
+
     await createUsageCharge({
       admin,
       subscriptionLineItemId: usageLineItem.id,

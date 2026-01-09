@@ -3,6 +3,11 @@ import prisma from "../db.server";
 import { redis } from "./utils/redis.server";
 import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
 import crypto from "node:crypto";
+import {
+  resolvePlanByOrders,
+  getPlanPrice,
+  PLAN_RANK,
+} from "./config/billingPlans";
 
 /* ---------------- Debug Helper ---------------- */
 
@@ -21,11 +26,6 @@ function debug(label, data = {}) {
   console.log(`🐛 [DEBUG] ${label}`);
   console.log(safeStringify(data));
 }
-
-/* ---------------- Constants ---------------- */
-
-const GROW_THRESHOLD = 2000;
-const ENTERPRISE_THRESHOLD = 5000;
 
 /* ---------------- Shopify Mutation ---------------- */
 
@@ -109,27 +109,7 @@ async function orderBasedBilling() {
           continue;
         }
 
-        /* ---------- TIER RESOLUTION ---------- */
-
-        function resolveTier(count) {
-          if (count > ENTERPRISE_THRESHOLD) return "ENTERPRISE";
-          if (count > GROW_THRESHOLD) return "GROW";
-          return "STANDARD";
-        }
-
-        const TIER_RANK = {
-          STANDARD: 0,
-          GROW: 1,
-          ENTERPRISE: 2,
-        };
-
-        const TIER_TOTAL_PRICE = {
-          STANDARD: 15,
-          GROW: 40,
-          ENTERPRISE: 50,
-        };
-
-        const eligibleTier = resolveTier(orderCount);
+        const eligibleTier = resolvePlanByOrders(orderCount);
         const currentTier = appliedTier || "STANDARD";
 
         debug("Tier evaluation", {
@@ -140,10 +120,10 @@ async function orderBasedBilling() {
         });
 
         if (eligibleTier === "STANDARD") continue;
-        if (TIER_RANK[eligibleTier] <= TIER_RANK[currentTier]) continue;
+        if (PLAN_RANK[eligibleTier] <= PLAN_RANK[currentTier]) continue;
 
-        const previousTotal = TIER_TOTAL_PRICE[currentTier] || 0;
-        const newTotal = TIER_TOTAL_PRICE[eligibleTier];
+        const previousTotal = getPlanPrice(currentTier);
+        const newTotal = getPlanPrice(eligibleTier);
         let chargeAmount = newTotal - previousTotal;
 
         debug("Charge BEFORE discount", {
