@@ -2,30 +2,30 @@ import cron from "node-cron";
 import prisma from "../db.server";
 import { redis } from "./utils/redis.server";
 import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
+import crypto from "node:crypto";
 
 const BILLING_CYCLE_DAYS = 30;
 const BASE_USAGE_AMOUNT = 15;
+const RENEWAL_PLAN = "STANDARD";
 
 async function checkStoreExpiry() {
   const now = Date.now();
+  // 1️⃣ Get earliest expiry
+  const entries = await redis.zRangeWithScores("store_expiry_queue", 0, 0);
+  if (!entries.length) return;
+
+  const { value: shop, score } = entries[0];
+  const expiryMs = Number(score);
+
+  if (!shop || !Number.isFinite(expiryMs)) return;
+  if (expiryMs > now) return;
+
+  // 🔒 Redis lock (prevents duplicate billing)
+  const lockKey = `billing_lock:${shop}`;
+  const lockValue = crypto.randomUUID();
 
   try {
-    // 1️⃣ Get earliest expiry
-    const entries = await redis.zRangeWithScores("store_expiry_queue", 0, 0);
-    if (!entries.length) return;
-
-    const { value: shop, score } = entries[0];
-    const expiryMs = Number(score);
-
-    if (!shop || !Number.isFinite(expiryMs)) return;
-    if (expiryMs > now) return;
-
-    // 🔒 Redis lock (prevents duplicate billing)
-    const lockKey = `billing_lock:${shop}`;
-    const lock = await redis.set(lockKey, "1", {
-      NX: true,
-      EX: 60,
-    });
+    const lock = await redis.set(lockKey, lockValue, { NX: true, EX: 60 });
     if (!lock) return;
 
     console.log("🔁 Rolling billing cycle for:", shop);
@@ -55,6 +55,15 @@ async function checkStoreExpiry() {
       cycleEnd: openCycle.cycleEnd,
     });
 
+    const discount = await prisma.storeDiscount.findFirst({
+      where: {
+        storeId: shop,
+        isActive: true,
+        cycleStart: { lte: openCycle.cycleEnd },
+        cycleEnd: { gte: openCycle.cycleStart },
+      },
+    });
+
     // 3️⃣ Load OFFLINE session
     const offlineSession = await prisma.session.findFirst({
       where: {
@@ -73,17 +82,52 @@ async function checkStoreExpiry() {
         $subscriptionLineItemId: ID!
         $price: MoneyInput!
         $description: String!
+        $idempotencyKey: String!
       ) {
         appUsageRecordCreate(
           subscriptionLineItemId: $subscriptionLineItemId
           price: $price
           description: $description
+          idempotencyKey: $idempotencyKey
         ) {
           appUsageRecord { id }
           userErrors { message }
         }
       }
     `;
+
+    let chargeAmount = BASE_USAGE_AMOUNT;
+
+    if (discount) {
+      if (discount.discountType === "FLAT") {
+        chargeAmount -= discount.discountValue;
+      }
+
+      if (discount.discountType === "PERCENT") {
+        const discountValue = Number(
+          ((chargeAmount * discount.discountValue) / 100).toFixed(2),
+        );
+        chargeAmount -= discountValue;
+      }
+    }
+
+    // Hard guard
+    if (chargeAmount <= 0) {
+      console.log("⚠️ Renewal skipped due to discount", {
+        shop,
+        BASE_USAGE_AMOUNT,
+        finalCharge: chargeAmount,
+      });
+      return;
+    }
+
+    const idempotencyKey = [
+      "newCycle",
+      shop,
+      openCycle.cycleStart.toISOString(),
+      openCycle.cycleEnd.toISOString(),
+      RENEWAL_PLAN,
+    ].join(":");
 
     const result = await callShopAdminGraphQL({
       shopDomain: shop,
@@ -92,10 +136,13 @@ async function checkStoreExpiry() {
       variables: {
         subscriptionLineItemId: openCycle.subscriptionLineItemId,
         price: {
-          amount: BASE_USAGE_AMOUNT,
+          amount: chargeAmount,
           currencyCode: "USD",
         },
-        description: "Base usage fee (auto renewal)",
+        description: discount
+          ? "Base usage fee (discount applied)"
+          : "Base usage fee (auto renewal)",
+        idempotencyKey,
       },
     });
 
@@ -123,11 +170,26 @@ async function checkStoreExpiry() {
           subscriptionLineItemId: openCycle.subscriptionLineItemId,
           cycleStart,
           cycleEnd,
-          usageAmount: BASE_USAGE_AMOUNT,
+          usageAmount: chargeAmount,
           status: "OPEN",
           appliedTier: "STANDARD",
         },
       });
+
+      if (
+        discount &&
+        discount.usageType === "ONE_TIME" &&
+        !discount.isActive.usageCount >= 1
+      ) {
+        await prisma.storeDiscount.update({
+          where: { id: discount.id },
+          data: {
+            usedAt: new Date(),
+            isActive: false,
+            // usageCount: discount.usageCount + 1,
+          },
+        });
+      }
     });
 
     // 6️⃣.5️⃣ RESET Redis order counter (CRITICAL)
@@ -149,6 +211,12 @@ async function checkStoreExpiry() {
     console.log("✅ Billing cycle renewed for:", shop);
   } catch (err) {
     console.error("❌ Cron error:", err);
+  } finally {
+    // 🔓 SAFE UNLOCK (OWNERSHIP CHECK)
+    const current = await redis.get(lockKey);
+    if (current === lockValue) {
+      await redis.del(lockKey);
+    }
   }
 }
 

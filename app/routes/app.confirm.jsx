@@ -162,6 +162,7 @@ export const loader = async ({ request }) => {
   }
 
   // Trial over — proceed to normal billing
+  // ======================================
 
   /* ----------------------------------
      3️⃣ Usage pricing line item
@@ -188,6 +189,44 @@ export const loader = async ({ request }) => {
   const cycleEnd = new Date(now);
   cycleEnd.setUTCDate(cycleEnd.getUTCDate() + BILLING_CYCLE_DAYS);
 
+  const idempotencyKey = [
+    "newCycle",
+    shop,
+    cycleStart.toISOString(),
+    cycleEnd.toISOString(),
+    "STANDARD", // or tier / reason
+  ].join(":");
+
+  // Disocunted charge amount (if any)
+  const discount = await prisma.storeDiscount.findFirst({
+    where: {
+      storeId: shop,
+      isActive: true,
+      cycleStart: { lte: cycleEnd },
+      cycleEnd: { gte: cycleStart },
+    },
+  });
+
+  let chargeAmount = BASE_USAGE_AMOUNT;
+
+  if (discount) {
+    if (discount.discountType === "FLAT") {
+      chargeAmount -= discount.discountValue;
+    }
+
+    if (discount.discountType === "PERCENT") {
+      const discountValue = Number(
+        ((chargeAmount * discount.discountValue) / 100).toFixed(2),
+      );
+      chargeAmount -= discountValue;
+    }
+  }
+
+  // 🛑 Hard guard
+  if (chargeAmount <= 0) {
+    throw new Error("Charge amount <= 0 after discount");
+  }
+
   /* ----------------------------------
      5️⃣ Charge + create new cycle
   ---------------------------------- */
@@ -195,8 +234,11 @@ export const loader = async ({ request }) => {
     await createUsageCharge({
       admin,
       subscriptionLineItemId: usageLineItem.id,
-      amount: BASE_USAGE_AMOUNT,
-      description: "Base usage fee (billing cycle)",
+      amount: chargeAmount,
+      description: discount
+        ? "Base usage fee (discount applied)"
+        : "Base usage fee (billing cycle)",
+      idempotencyKey,
     });
 
     await tx.storeUsage.create({
@@ -206,11 +248,21 @@ export const loader = async ({ request }) => {
         subscriptionLineItemId: usageLineItem?.id ?? null,
         cycleStart,
         cycleEnd,
-        usageAmount: BASE_USAGE_AMOUNT,
+        usageAmount: chargeAmount, // ✅ actual charged amount
         status: "OPEN",
         appliedTier: "STANDARD",
       },
     });
+
+    if (discount) {
+      await tx.storeDiscount.update({
+        where: { id: discount.id },
+        data: {
+          usageCount: { increment: 1 },
+          ...(discount.usageType === "ONE_TIME" ? { usedAt: new Date() } : {}),
+        },
+      });
+    }
   });
 
   const redisTierKey = `applied_tier:${shop}`;

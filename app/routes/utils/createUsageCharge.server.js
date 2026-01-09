@@ -3,17 +3,20 @@ export async function createUsageCharge({
   subscriptionLineItemId,
   amount,
   description,
+  idempotencyKey, // ✅ new
 }) {
   const mutation = `
     mutation AppUsageRecordCreate(
       $subscriptionLineItemId: ID!
       $price: MoneyInput!
       $description: String!
+      $idempotencyKey: String!
     ) {
       appUsageRecordCreate(
         subscriptionLineItemId: $subscriptionLineItemId
         price: $price
         description: $description
+        idempotencyKey: $idempotencyKey
       ) {
         appUsageRecord {
           id
@@ -34,6 +37,7 @@ export async function createUsageCharge({
     subscriptionLineItemId,
     price: { amount, currencyCode: "USD" },
     description,
+    idempotencyKey,
   };
 
   const res = await admin.graphql(mutation, { variables });

@@ -72,7 +72,7 @@ async function orderBasedBilling() {
       const lockKey = `order_billing_lock:${storeId}`;
       const lockValue = crypto.randomUUID();
 
-      const lock = await redis.set(lockKey, lockValue, { NX: true, EX: 180 });
+      const lock = await redis.set(lockKey, lockValue, { NX: true, EX: 300 });
       if (!lock) continue;
 
       try {
@@ -165,8 +165,8 @@ async function orderBasedBilling() {
           }
 
           if (discount.discountType === "PERCENT") {
-            const discountValue = Math.floor(
-              (chargeAmount * discount.discountValue) / 100,
+            const discountValue = Number(
+              ((chargeAmount * discount.discountValue) / 100).toFixed(2),
             );
 
             debug("Applying PERCENT discount", {
@@ -197,12 +197,11 @@ async function orderBasedBilling() {
         /* ---------- IDENTITY DEBUG ---------- */
 
         const idempotencyKey = [
-          "order-upgrade",
+          "plan-upgrade",
           storeId,
           cycleStart.toISOString(),
           cycleEnd.toISOString(),
           eligibleTier,
-          Math.floor(Math.random() * 900 + 100),
         ].join(":");
 
         debug("Prepared Shopify charge", {
@@ -265,10 +264,10 @@ async function orderBasedBilling() {
           });
         });
 
-        if (discount) {
+        if (discount && discount.usageType === "ONE_TIME") {
           await prisma.storeDiscount.update({
             where: { id: discount.id },
-            data: { usedAt: new Date(), isActive: false },
+            data: { usedAt: new Date(), usageCount: discount.usageCount + 1 },
           });
 
           debug("Discount marked as used", {
