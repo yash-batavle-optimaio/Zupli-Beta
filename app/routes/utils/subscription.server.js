@@ -1,9 +1,4 @@
-/**
- * Shopify Subscription Mutations
- * Server-only helpers
- */
-
-import SUBSCRIPTION_CONFIG from "../config/billingPlans";
+import { SUBSCRIPTION_CONFIG } from "../config/billingPlans";
 
 export async function createAppSubscription({ admin, returnUrl, trialDays }) {
   const mutation = `
