@@ -1,5 +1,5 @@
 import { authenticate } from "../shopify.server";
-import { redis } from "./utils/redis.server";
+import { ensureRedisConnected } from "./utils/redis.server";
 
 export const loader = () =>
   Response.json({ message: "👋 Webhook endpoint: POST only." });
@@ -11,6 +11,8 @@ export const action = async ({ request }) => {
   if (!session || topic !== "ORDERS_CREATE") {
     return new Response("ok");
   }
+
+  const redis = await ensureRedisConnected();
 
   const orderId = String(payload.id);
   const storeId = shop;
