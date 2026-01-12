@@ -24,6 +24,7 @@ export const action = async ({ request }) => {
   console.log("🔔 Webhook received");
   console.log("Topic:", topic);
   console.log("Shop:", shop);
+  console.log("Payload:", payload);
 
   // ---- Only handle subscription updates ----
   if (topic !== "APP_SUBSCRIPTIONS_UPDATE") {
