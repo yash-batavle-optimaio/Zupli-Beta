@@ -14,7 +14,10 @@ export const action = async ({ request }) => {
     return new Response();
   }
 
-  console.log("-------=====Webhook topic received create: subscription", topic);
+  console.log(
+    "-------=====Webhook topic received create: subscription ",
+    topic,
+  );
   //   if (topic === "CARTS_CREATE") {
   console.log("🛒 Full Cart Webhook Data:");
   console.log(JSON.stringify(payload, null, 2));
