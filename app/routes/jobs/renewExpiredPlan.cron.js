@@ -9,9 +9,8 @@ const BILLING_CYCLE_DAYS = BILLING_DAYS;
 const BASE_USAGE_AMOUNT = BILLING_PLANS.STANDARD.basePrice;
 const RENEWAL_PLAN = BILLING_PLANS.STANDARD.key;
 
-const redis = await ensureRedisConnected();
-
 async function checkStoreExpiry() {
+  const redis = await ensureRedisConnected();
   const now = Date.now();
   // 1️⃣ Get earliest expiry
   const entries = await redis.zRangeWithScores("store_expiry_queue", 0, 0);

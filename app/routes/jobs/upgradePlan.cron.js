@@ -12,7 +12,6 @@ import {
 /* ---------------- Debug Helper ---------------- */
 
 const DEBUG = true;
-const redis = await ensureRedisConnected();
 
 function safeStringify(data) {
   return JSON.stringify(
@@ -52,6 +51,7 @@ const CHARGE_MUTATION = `
 /* ---------------- Main Job ---------------- */
 
 async function orderBasedBilling() {
+  const redis = await ensureRedisConnected();
   try {
     const openCycles = await prisma.storeUsage.findMany({
       where: { status: "OPEN" },
