@@ -1,56 +1,86 @@
 import { authenticate } from "../shopify.server";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
-
+/**
+ * GET → helpful message (Shopify never calls GET)
+ */
 export const loader = () =>
-  Response.json({ message: "👋 Webhook endpoint: POST only." });
+  new Response("Webhook endpoint. Use POST.", { status: 200 });
 
+/**
+ * POST → Shopify webhook handler
+ */
 export const action = async ({ request }) => {
-  const { topic, payload, session, shop } = await authenticate.webhook(request);
+  let webhook;
 
-  if (!session) {
-    console.warn("⚠️ No active session found. Shop may have uninstalled.");
-    return new Response();
+  try {
+    webhook = await authenticate.webhook(request);
+  } catch (err) {
+    console.error("❌ Webhook verification failed", err);
+    return new Response("Unauthorized", { status: 401 });
   }
 
-  console.log(
-    "-------=====Webhook topic received create: subscription ",
-    topic,
-  );
-  //   if (topic === "CARTS_CREATE") {
-  console.log("🛒 Full Cart Webhook Data:");
-  console.log(JSON.stringify(payload, null, 2));
+  const { topic, payload, shop } = webhook;
 
-  // -----------------------------
-  // Extract Analytics Data
-  // -----------------------------
-  const cartId = payload.id;
-  const storeId = shop; // e.g. mystore.myshopify.com
-  const customerId = payload.buyerIdentity;
+  console.log("🔔 Webhook received");
+  console.log("Topic:", topic);
+  console.log("Shop:", shop);
 
-  console.log("📊 Subscription Data:");
-  console.log("Store ID:", storeId);
-  console.log("Cart ID:", cartId);
-  console.log("Customer ID:", customerId);
-  console.log("Extra Data", JSON.stringify(payload.buyerIdentity, null, 2));
+  // ---- Only handle subscription updates ----
+  if (topic !== "APP_SUBSCRIPTIONS_UPDATE") {
+    console.log("ℹ️ Ignored topic:", topic);
+    return new Response("Ignored", { status: 200 });
+  }
 
-  //     try {
-  //       await prisma.cartEvent.create({
-  //         data: {
-  //           cartId,
-  //           storeId,
-  //           customerId,
-  //           eventType: "CARTS_CREATE",
-  //           payload,
-  //         },
-  //       });
+  /**
+   * payload structure (important fields)
+   * https://shopify.dev/docs/api/webhooks/topics/app_subscriptions_update
+   */
+  const {
+    id: subscriptionId,
+    status,
+    name,
+    admin_graphql_api_id,
+    created_at,
+    current_period_end,
+    canceled_at,
+    trial_days,
+  } = payload;
 
-  //       console.log("✅ Saved analytics data to DB! Using CARTS_CREATE webhook.");
-  //     } catch (err) {
-  //       console.error("❌ DB Save Error:", err);
-  //     }
-  //   }
+  console.log("📦 Subscription Update");
+  console.log({
+    subscriptionId,
+    name,
+    status,
+    trial_days,
+    created_at,
+    current_period_end,
+    canceled_at,
+  });
 
-  return new Response("ok");
+  /**
+   * DEMO logic only (no DB)
+   */
+  switch (status) {
+    case "ACTIVE":
+      console.log("✅ Subscription is ACTIVE");
+      break;
+
+    case "CANCELLED":
+      console.log("🛑 Subscription CANCELLED");
+      break;
+
+    case "FROZEN":
+      console.log("❄️ Subscription FROZEN");
+      break;
+
+    case "EXPIRED":
+      console.log("⌛ Subscription EXPIRED");
+      break;
+
+    default:
+      console.log("ℹ️ Subscription status:", status);
+  }
+
+  // IMPORTANT: Always return 200 so Shopify stops retrying
+  return new Response("OK", { status: 200 });
 };
