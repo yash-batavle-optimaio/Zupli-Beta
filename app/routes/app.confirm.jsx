@@ -4,7 +4,7 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { createUsageCharge } from "./utils/createUsageCharge.server";
 import { useLoaderData } from "@remix-run/react";
-import { redis } from "./utils/redis.server";
+import { ensureRedisConnected } from "./utils/redis.server";
 import { BILLING_PLANS, BILLING_DAYS } from "./config/billingPlans";
 
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
@@ -29,7 +29,7 @@ export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   const now = new Date();
-
+  const redis = await ensureRedisConnected();
   const storeInfo = await prisma.storeInfo.findUnique({
     where: { storeId: shop },
   });
