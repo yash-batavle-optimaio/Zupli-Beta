@@ -93,7 +93,8 @@ export const action = async ({ request }) => {
     const storeHandle = shop.replace(".myshopify.com", "");
 
     // ✅ Dynamic return URL (works for all stores)
-    const returnUrl = `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app/confirm?shop=${shop}&host=${host}`;
+    // const returnUrl = `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app/confirm?shop=${shop}&host=${host}`;
+    const returnUrl = `https://admin.shopify.com/store/${storeHandle}/apps/zupli/app`;
 
     /* 🔥 CHECK TRIAL STATUS */
     const storeInfo = await prisma.storeInfo.findUnique({
