@@ -1,13 +1,13 @@
 import cron from "node-cron";
-import prisma from "../db.server";
-import { redis } from "./utils/redis.server";
-import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
+import prisma from "../../db.server";
+import { redis } from "../utils/redis.server";
+import { callShopAdminGraphQL } from "../utils/shopifyGraphql.server";
 import crypto from "node:crypto";
 import {
   resolvePlanByOrders,
   getPlanPrice,
   PLAN_RANK,
-} from "./config/billingPlans";
+} from "../config/billingPlans";
 
 /* ---------------- Debug Helper ---------------- */
 

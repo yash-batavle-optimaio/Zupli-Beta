@@ -1,9 +1,9 @@
 import cron from "node-cron";
-import prisma from "../db.server";
-import { redis } from "./utils/redis.server";
-import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
+import prisma from "../../db.server";
+import { redis } from "../utils/redis.server";
+import { callShopAdminGraphQL } from "../utils/shopifyGraphql.server";
 import crypto from "node:crypto";
-import { BILLING_PLANS, BILLING_DAYS } from "./config/billingPlans";
+import { BILLING_PLANS, BILLING_DAYS } from "../config/billingPlans";
 
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
 const BASE_USAGE_AMOUNT = BILLING_PLANS.STANDARD.basePrice;

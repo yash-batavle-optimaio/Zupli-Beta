@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
-import { runRenewExpieredPlan } from "./renewExpiredPlan.cron";
-import { runUpgradePlan } from "./upgradePlan.cron";
-import { flushOrdersToDBHourlyManual } from "./orderBulckFlush.cron";
+import { runRenewExpieredPlan } from "./jobs/renewExpiredPlan.cron";
+import { runUpgradePlan } from "./jobs/upgradePlan.cron";
+import { flushOrdersToDBHourlyManual } from "./jobs/orderBulckFlush.cron";
 
 /* ---------- SHARED HANDLER ---------- */
 
