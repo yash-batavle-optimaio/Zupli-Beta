@@ -22,7 +22,6 @@ const shopify = shopifyApp({
       console.log("App installed for:", session.shop);
       // ✅ Save store info on install / reinstall
       await upsertStoreInfo(session.shop);
-      a;
     },
   },
   distribution: AppDistribution.AppStore,
