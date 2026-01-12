@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import prisma from "../../db.server";
-import { redis } from "../utils/redis.server";
+import { ensureRedisConnected } from "../utils/redis.server";
 import { callShopAdminGraphQL } from "../utils/shopifyGraphql.server";
 import crypto from "node:crypto";
 import {
@@ -12,6 +12,7 @@ import {
 /* ---------------- Debug Helper ---------------- */
 
 const DEBUG = true;
+const redis = await ensureRedisConnected();
 
 function safeStringify(data) {
   return JSON.stringify(

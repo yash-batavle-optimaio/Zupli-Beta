@@ -1,12 +1,14 @@
 import cron from "node-cron";
 import prisma from "../../db.server";
-import { redis } from "../utils/redis.server";
+import { ensureRedisConnected } from "../utils/redis.server";
 
 /**
  * Flush Redis order queues → DB (BillingOrder)
  * Runs every hour
  */
 async function flushOrdersToDBHourly() {
+  const redis = await ensureRedisConnected();
+
   console.log("🧹 Starting hourly order flush...");
 
   try {
