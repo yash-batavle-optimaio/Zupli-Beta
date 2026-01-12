@@ -2,7 +2,7 @@
 
 client_id = "cdf63c69b617cd8b34e1ccc4c8fe7027"
 name = "Zupli"
-application_url = "https://remix-app-rqyv.onrender.com/app"
+application_url = "https://remix-app-rqyv.onrender.com/"
 embedded = true
 
 [build]
@@ -25,7 +25,7 @@ api_version = "2026-01"
 
   [[webhooks.subscriptions]]
   topics = [ "app_subscriptions/update" ]
-  uri = "/create_subscription"
+  uri = "/webhooks/app/create_subscription"
 
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
