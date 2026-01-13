@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\win 10\\Downloads\\optimaio-cart\\logs\\.f038d088ed1907424ddaf05f001cdb15611ee253-audit.json",
+    "files": [
+        {
+            "date": 1768297442947,
+            "name": "C:\\Users\\win 10\\Downloads\\optimaio-cart\\logs\\app-2026-01-13.log",
+            "hash": "170468d2306e7b2e5e0fc996682f1c84aaae0cb918762f075e3894cb9b769a58"
+        }
+    ],
+    "hashType": "sha256"
+}

@@ -29,6 +29,6 @@
     "optimaio-cart-transform": "file:"
   },
   "devDependencies": {
-    "vitest": "2.1.9"
+    "vitest": "^4.0.17"
   }
 }
