@@ -7,19 +7,8 @@ import { BILLING_PLANS, BILLING_DAYS } from "./config/billingPlans";
 const BASE_USAGE_AMOUNT = BILLING_PLANS.STANDARD.basePrice;
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
 
-export const loader = () =>
-  new Response("Webhook endpoint. Use POST.", { status: 200 });
-
 export const action = async ({ request }) => {
-  let webhook;
-
-  try {
-    webhook = await authenticate.webhook(request);
-  } catch {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const { topic, payload, shop } = webhook;
+  const { topic, payload, shop } = await authenticate.webhook(request);
 
   if (topic !== "APP_SUBSCRIPTIONS_UPDATE") {
     return new Response("OK", { status: 200 });
@@ -295,5 +284,5 @@ export const action = async ({ request }) => {
     chargeAmount,
   });
 
-  return new Response("OK", { status: 200 });
+  return new Response();
 };

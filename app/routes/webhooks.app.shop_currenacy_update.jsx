@@ -75,5 +75,5 @@ export const action = async ({ request }) => {
   });
 
   console.log("✅ Redis updated successfully");
-  return new Response("ok");
+  return new Response();
 };

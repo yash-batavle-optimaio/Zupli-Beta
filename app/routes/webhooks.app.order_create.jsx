@@ -1,9 +1,6 @@
 import { authenticate } from "../shopify.server";
 import { ensureRedisConnected } from "./utils/redis.server";
 
-export const loader = () =>
-  Response.json({ message: "👋 Webhook endpoint: POST only." });
-
 export const action = async ({ request }) => {
   const { topic, payload, session, shop } = await authenticate.webhook(request);
 
@@ -68,5 +65,5 @@ export const action = async ({ request }) => {
     storeId,
   });
 
-  return new Response("ok");
+  return new Response();
 };
