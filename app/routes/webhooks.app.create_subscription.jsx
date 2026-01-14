@@ -75,6 +75,18 @@ export const action = async ({ request }) => {
   }
 
   /* ----------------------------------
+   2️⃣.5 Resolve usage pricing line item (ONCE)
+---------------------------------- */
+  const usageLineItem = subscription.lineItems.find(
+    (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
+  );
+
+  if (!usageLineItem) {
+    console.error("No AppUsagePricing line item");
+    return new Response("OK", { status: 200 });
+  }
+
+  /* ----------------------------------
      3️⃣ Trial logic (same as confirm.jsx)
   ---------------------------------- */
   const storeInfo = await prisma.storeInfo.findUnique({
@@ -91,7 +103,33 @@ export const action = async ({ request }) => {
   }
 
   if (trialEnd && trialEnd > now) {
-    // Redis: TRIAL tier
+    await prisma.$transaction(async (tx) => {
+      // 1️⃣ Close ANY existing open trial cycles (old installs, old subs)
+      await tx.storeUsage.updateMany({
+        where: {
+          storeId: shop,
+          status: "OPEN",
+          appliedTier: "TRIAL",
+        },
+        data: { status: "CLOSED" },
+      });
+
+      // 2️⃣ Create fresh TRIAL cycle for current subscription
+      await tx.storeUsage.create({
+        data: {
+          storeId: shop,
+          subscriptionId,
+          subscriptionLineItemId: usageLineItem?.id ?? null,
+          cycleStart: now, // 👈 new start (reinstall-safe)
+          cycleEnd: trialEnd, // 👈 same trial end
+          usageAmount: 0,
+          status: "OPEN",
+          appliedTier: "TRIAL",
+        },
+      });
+    });
+
+    // 3️⃣ Redis sync (runtime truth)
     const ttl = Math.ceil((trialEnd.getTime() - Date.now()) / 1000) + 3600;
 
     await redis.set(`applied_tier:${shop}`, "TRIAL", { EX: ttl });
@@ -99,6 +137,12 @@ export const action = async ({ request }) => {
     await redis.zAdd("store_expiry_queue", {
       score: trialEnd.getTime(),
       value: shop,
+    });
+
+    console.log("🟡 Trial cycle forced & synced", {
+      shop,
+      subscriptionId,
+      trialEnd,
     });
 
     return new Response("OK", { status: 200 });
@@ -129,14 +173,14 @@ export const action = async ({ request }) => {
   /* ----------------------------------
      4️⃣ Usage pricing line item
   ---------------------------------- */
-  const usageLineItem = subscription.lineItems.find(
-    (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
-  );
+  // const usageLineItem = subscription.lineItems.find(
+  //   (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
+  // );
 
-  if (!usageLineItem) {
-    console.error("No AppUsagePricing line item");
-    return new Response("OK", { status: 200 });
-  }
+  // if (!usageLineItem) {
+  //   console.error("No AppUsagePricing line item");
+  //   return new Response("OK", { status: 200 });
+  // }
 
   /* ----------------------------------
      5️⃣ Billing window
