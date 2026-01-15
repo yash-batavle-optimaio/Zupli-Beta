@@ -2,9 +2,13 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
 import { ensureRedisConnected } from "./utils/redis.server";
-import { BILLING_PLANS, BILLING_DAYS } from "./config/billingPlans";
+import {
+  getBaseUsageAmount,
+  BILLING_PLANS,
+  BILLING_DAYS,
+} from "./config/billingPlans";
 
-const BASE_USAGE_AMOUNT = BILLING_PLANS.STANDARD.basePrice;
+const BASE_USAGE_AMOUNT = BILLING_PLANS.STARTER.basePrice;
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
 
 export const action = async ({ request }) => {
@@ -26,21 +30,38 @@ export const action = async ({ request }) => {
   const redis = await ensureRedisConnected();
 
   /* ----------------------------------
-     1️⃣ Offline session
-  ---------------------------------- */
-  const offlineSession = await prisma.session.findFirst({
-    where: { shop, isOnline: false },
+   🔒 0️⃣.5 Acquire billing lock (CRITICAL)
+---------------------------------- */
+  const lockKey = `billing_lock:${shop}`;
+  const lockTTL = 30; // seconds
+
+  const lockAcquired = await redis.set(lockKey, "1", {
+    NX: true,
+    EX: lockTTL,
   });
 
-  if (!offlineSession) {
-    console.error("No offline session for", shop);
+  if (!lockAcquired) {
+    console.log("🔒 Billing skipped: lock already held", { shop });
     return new Response("OK", { status: 200 });
   }
 
-  /* ----------------------------------
+  try {
+    /* ----------------------------------
+     1️⃣ Offline session
+  ---------------------------------- */
+    const offlineSession = await prisma.session.findFirst({
+      where: { shop, isOnline: false },
+    });
+
+    if (!offlineSession) {
+      console.error("No offline session for", shop);
+      return new Response("OK", { status: 200 });
+    }
+
+    /* ----------------------------------
      2️⃣ Fetch subscription
   ---------------------------------- */
-  const GET_SUBSCRIPTION = `
+    const GET_SUBSCRIPTION = `
     query GetSubscription($id: ID!) {
       node(id: $id) {
         ... on AppSubscription {
@@ -61,170 +82,206 @@ export const action = async ({ request }) => {
     }
   `;
 
-  const result = await callShopAdminGraphQL({
-    shopDomain: shop,
-    accessToken: offlineSession.accessToken,
-    query: GET_SUBSCRIPTION,
-    variables: { id: subscriptionId },
-  });
+    const result = await callShopAdminGraphQL({
+      shopDomain: shop,
+      accessToken: offlineSession.accessToken,
+      query: GET_SUBSCRIPTION,
+      variables: { id: subscriptionId },
+    });
 
-  const subscription = result?.node;
+    const subscription = result?.node;
 
-  if (!subscription || subscription.status !== "ACTIVE") {
-    return new Response("OK", { status: 200 });
-  }
+    if (!subscription || subscription.status !== "ACTIVE") {
+      return new Response("OK", { status: 200 });
+    }
 
-  /* ----------------------------------
+    /* ----------------------------------
    2️⃣.5 Resolve usage pricing line item (ONCE)
 ---------------------------------- */
-  const usageLineItem = subscription.lineItems.find(
-    (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
-  );
+    const usageLineItem = subscription.lineItems.find(
+      (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
+    );
 
-  if (!usageLineItem) {
-    console.error("No AppUsagePricing line item");
-    return new Response("OK", { status: 200 });
-  }
+    if (!usageLineItem) {
+      console.error("No AppUsagePricing line item");
+      return new Response("OK", { status: 200 });
+    }
 
-  /* ----------------------------------
-     3️⃣ Trial logic (same as confirm.jsx)
+    /*
+2.6 First read data from redis
+*/
+    const now = new Date();
+    const appliedTier = await redis.get(`applied_tier:${shop}`);
+    const expiryResult = await redis.zScore("store_expiry_queue", shop);
+
+    const nowTs = Date.now();
+    const redisTrialActive =
+      appliedTier === "TRIAL" &&
+      expiryResult !== null &&
+      Number(expiryResult) > nowTs;
+
+    // 2.7 Use Redis trial if active
+    let trialEnd = null;
+
+    if (redisTrialActive) {
+      trialEnd = new Date(Number(expiryResult));
+    }
+
+    /* ----------------------------------
+     3️⃣ Fallback to DB (only if Redis miss)
   ---------------------------------- */
-  const storeInfo = await prisma.storeInfo.findUnique({
-    where: { storeId: shop },
-  });
-
-  const now = new Date();
-  let trialEnd = storeInfo?.trialEndsAt;
-
-  if (!trialEnd && subscription.trialDays) {
-    const trialStart = new Date(subscription.createdAt);
-    trialEnd = new Date(trialStart);
-    trialEnd.setDate(trialEnd.getDate() + subscription.trialDays);
-  }
-
-  if (trialEnd && trialEnd > now) {
-    await prisma.$transaction(async (tx) => {
-      // 1️⃣ Close ANY existing open trial cycles (old installs, old subs)
-      await tx.storeUsage.updateMany({
-        where: {
-          storeId: shop,
-          status: "OPEN",
-          appliedTier: "TRIAL",
-        },
-        data: { status: "CLOSED" },
+    if (!trialEnd) {
+      const storeInfo = await prisma.storeInfo.findUnique({
+        where: { storeId: shop },
       });
 
-      // 2️⃣ Create fresh TRIAL cycle for current subscription
-      await tx.storeUsage.create({
-        data: {
-          storeId: shop,
-          subscriptionId,
-          subscriptionLineItemId: usageLineItem?.id ?? null,
-          cycleStart: now, // 👈 new start (reinstall-safe)
-          cycleEnd: trialEnd, // 👈 same trial end
-          usageAmount: 0,
-          status: "OPEN",
-          appliedTier: "TRIAL",
-        },
+      const isFirstTimeUser =
+        !storeInfo?.trialEndsAt &&
+        storeInfo?.trialUsed === false &&
+        subscription.trialDays &&
+        subscription.trialDays > 0;
+
+      if (isFirstTimeUser) {
+        const trialStart = new Date(subscription.createdAt);
+        trialEnd = new Date(trialStart);
+        trialEnd.setDate(trialEnd.getDate() + subscription.trialDays);
+
+        // 🔒 Persist trial usage immediately
+        await prisma.storeInfo.update({
+          where: { storeId: shop },
+          data: {
+            trialEndsAt: trialEnd,
+            trialUsed: true,
+          },
+        });
+      } else if (storeInfo?.trialEndsAt && storeInfo.trialEndsAt > now) {
+        trialEnd = storeInfo.trialEndsAt;
+      }
+    }
+
+    if (trialEnd && trialEnd > now) {
+      await prisma.$transaction(async (tx) => {
+        // 1️⃣ Close ANY existing open trial cycles (old installs, old subs)
+        await tx.storeUsage.updateMany({
+          where: {
+            storeId: shop,
+            status: "OPEN",
+            appliedTier: "TRIAL",
+          },
+          data: { status: "CLOSED" },
+        });
+
+        // 2️⃣ Create fresh TRIAL cycle for current subscription
+        await tx.storeUsage.create({
+          data: {
+            storeId: shop,
+            subscriptionId,
+            subscriptionLineItemId: usageLineItem?.id,
+            cycleStart: now, // 👈 new start (reinstall-safe)
+            cycleEnd: trialEnd, // 👈 same trial end
+            usageAmount: 0,
+            status: "OPEN",
+            appliedTier: "TRIAL",
+          },
+        });
       });
-    });
 
-    // 3️⃣ Redis sync (runtime truth)
-    const ttl = Math.ceil((trialEnd.getTime() - Date.now()) / 1000) + 3600;
+      // 3️⃣ Redis sync (runtime truth)
+      const ttl = Math.ceil((trialEnd.getTime() - Date.now()) / 1000) + 3600;
 
-    await redis.set(`applied_tier:${shop}`, "TRIAL", { EX: ttl });
+      await redis.set(`applied_tier:${shop}`, "TRIAL", { EX: ttl });
 
-    await redis.zAdd("store_expiry_queue", {
-      score: trialEnd.getTime(),
-      value: shop,
-    });
+      await redis.zAdd("store_expiry_queue", {
+        score: trialEnd.getTime(),
+        value: shop,
+      });
 
-    console.log("🟡 Trial cycle forced & synced", {
-      shop,
-      subscriptionId,
-      trialEnd,
-    });
+      console.log("🟡 Trial cycle forced & synced", {
+        shop,
+        subscriptionId,
+        trialEnd,
+      });
 
-    return new Response("OK", { status: 200 });
-  }
+      return new Response("OK", { status: 200 });
+    }
 
-  /* ----------------------------------
+    /* ----------------------------------
    🔒 3️⃣.5 ACTIVE CYCLE GUARD (CRITICAL)
 ---------------------------------- */
-  const existingOpenCycle = await prisma.storeUsage.findFirst({
-    where: {
-      storeId: shop,
-      subscriptionId,
-      status: "OPEN",
-      appliedTier: "STANDARD",
-    },
-  });
-
-  if (existingOpenCycle) {
-    console.log("ℹ️ Billing skipped: active cycle already exists", {
-      shop,
-      subscriptionId,
-      cycleStart: existingOpenCycle.cycleStart,
+    const existingOpenCycle = await prisma.storeUsage.findFirst({
+      where: {
+        storeId: shop,
+        subscriptionId,
+        status: "OPEN",
+        appliedTier: "STANDARD",
+      },
     });
 
-    return new Response("OK", { status: 200 });
-  }
+    if (existingOpenCycle) {
+      console.log("ℹ️ Billing skipped: active cycle already exists", {
+        shop,
+        subscriptionId,
+        cycleStart: existingOpenCycle.cycleStart,
+      });
 
-  /* ----------------------------------
+      return new Response("OK", { status: 200 });
+    }
+
+    /* ----------------------------------
      4️⃣ Usage pricing line item
   ---------------------------------- */
-  // const usageLineItem = subscription.lineItems.find(
-  //   (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
-  // );
+    // const usageLineItem = subscription.lineItems.find(
+    //   (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
+    // );
 
-  // if (!usageLineItem) {
-  //   console.error("No AppUsagePricing line item");
-  //   return new Response("OK", { status: 200 });
-  // }
+    // if (!usageLineItem) {
+    //   console.error("No AppUsagePricing line item");
+    //   return new Response("OK", { status: 200 });
+    // }
 
-  /* ----------------------------------
+    /* ----------------------------------
      5️⃣ Billing window
   ---------------------------------- */
-  const cycleStart = now;
-  const cycleEnd = new Date(now);
-  cycleEnd.setUTCDate(cycleEnd.getUTCDate() + BILLING_CYCLE_DAYS);
+    const cycleStart = now;
+    const cycleEnd = new Date(now);
+    cycleEnd.setUTCDate(cycleEnd.getUTCDate() + BILLING_CYCLE_DAYS);
 
-  /* ----------------------------------
+    /* ----------------------------------
      6️⃣ Discount logic (unchanged)
   ---------------------------------- */
-  const discount = await prisma.storeDiscount.findFirst({
-    where: {
-      storeId: shop,
-      isActive: true,
-      cycleStart: { lte: cycleEnd },
-      cycleEnd: { gte: cycleStart },
-    },
-  });
+    const discount = await prisma.storeDiscount.findFirst({
+      where: {
+        storeId: shop,
+        isActive: true,
+        cycleStart: { lte: cycleEnd },
+        cycleEnd: { gte: cycleStart },
+      },
+    });
 
-  let chargeAmount = BASE_USAGE_AMOUNT;
+    let chargeAmount = BASE_USAGE_AMOUNT;
 
-  if (discount) {
-    if (discount.discountType === "FLAT") {
-      chargeAmount -= discount.discountValue;
+    if (discount) {
+      if (discount.discountType === "FLAT") {
+        chargeAmount -= discount.discountValue;
+      }
+
+      if (discount.discountType === "PERCENT") {
+        const discountValue = Number(
+          ((chargeAmount * discount.discountValue) / 100).toFixed(2),
+        );
+        chargeAmount -= discountValue;
+      }
     }
 
-    if (discount.discountType === "PERCENT") {
-      const discountValue = Number(
-        ((chargeAmount * discount.discountValue) / 100).toFixed(2),
-      );
-      chargeAmount -= discountValue;
+    if (chargeAmount <= 0) {
+      console.warn("Charge skipped due to discount");
+      return new Response("OK", { status: 200 });
     }
-  }
 
-  if (chargeAmount <= 0) {
-    console.warn("Charge skipped due to discount");
-    return new Response("OK", { status: 200 });
-  }
-
-  /* ----------------------------------
+    /* ----------------------------------
      7️⃣ Create Shopify usage charge
   ---------------------------------- */
-  const CREATE_USAGE_CHARGE = `
+    const CREATE_USAGE_CHARGE = `
     mutation CreateUsage(
       $lineItemId: ID!
       $price: MoneyInput!
@@ -243,90 +300,93 @@ export const action = async ({ request }) => {
     }
   `;
 
-  const idempotencyKey = [
-    "NEW_USAGE_CHARGE",
-    shop,
-    subscriptionId,
-    "STANDARD",
-  ].join(":");
+    const idempotencyKey = [
+      "NEW_USAGE_CHARGE",
+      shop,
+      subscriptionId,
+      "STANDARD",
+    ].join(":");
 
-  const chargeResult = await callShopAdminGraphQL({
-    shopDomain: shop,
-    accessToken: offlineSession.accessToken,
-    query: CREATE_USAGE_CHARGE,
-    variables: {
-      lineItemId: usageLineItem.id,
-      price: {
-        amount: chargeAmount,
-        currencyCode: "USD",
+    const chargeResult = await callShopAdminGraphQL({
+      shopDomain: shop,
+      accessToken: offlineSession.accessToken,
+      query: CREATE_USAGE_CHARGE,
+      variables: {
+        lineItemId: usageLineItem.id,
+        price: {
+          amount: chargeAmount,
+          currencyCode: "USD",
+        },
+        description: discount
+          ? "Base usage fee (discount applied)"
+          : "Base usage fee (webhook billing)",
+        idempotencyKey,
       },
-      description: discount
-        ? "Base usage fee (discount applied)"
-        : "Base usage fee (webhook billing)",
-      idempotencyKey,
-    },
-  });
+    });
 
-  const errors = chargeResult?.appUsageRecordCreate?.userErrors;
-  if (errors?.length) {
-    console.error("Billing failed:", errors[0].message);
-    return new Response("OK", { status: 200 });
-  }
+    const errors = chargeResult?.appUsageRecordCreate?.userErrors;
+    if (errors?.length) {
+      console.error("Billing failed:", errors[0].message);
+      return new Response("OK", { status: 200 });
+    }
 
-  /* ----------------------------------
+    /* ----------------------------------
      8️⃣ DB + Redis (ATOMIC INTENT)
   ---------------------------------- */
-  await prisma.$transaction(async (tx) => {
-    await tx.storeUsage.updateMany({
-      where: { storeId: shop, status: "OPEN" },
-      data: { status: "CLOSED" },
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.storeUsage.updateMany({
+        where: { storeId: shop, status: "OPEN" },
+        data: { status: "CLOSED" },
+      });
 
-    await tx.storeUsage.create({
-      data: {
-        storeId: shop,
-        subscriptionId,
-        subscriptionLineItemId: usageLineItem.id,
-        cycleStart,
-        cycleEnd,
-        usageAmount: chargeAmount,
-        status: "OPEN",
-        appliedTier: "STANDARD",
-      },
-    });
-
-    if (discount) {
-      await tx.storeDiscount.update({
-        where: { id: discount.id },
+      await tx.storeUsage.create({
         data: {
-          usageCount: { increment: 1 },
-          ...(discount.usageType === "ONE_TIME"
-            ? { usedAt: new Date(), isActive: false }
-            : {}),
+          storeId: shop,
+          subscriptionId,
+          subscriptionLineItemId: usageLineItem.id,
+          cycleStart,
+          cycleEnd,
+          usageAmount: chargeAmount,
+          status: "OPEN",
+          appliedTier: "STANDARD",
         },
       });
-    }
-  });
 
-  /* ----------------------------------
+      if (discount) {
+        await tx.storeDiscount.update({
+          where: { id: discount.id },
+          data: {
+            usageCount: { increment: 1 },
+            ...(discount.usageType === "ONE_TIME"
+              ? { usedAt: new Date(), isActive: false }
+              : {}),
+          },
+        });
+      }
+    });
+
+    /* ----------------------------------
      9️⃣ Redis FINAL STATE (CRITICAL)
   ---------------------------------- */
-  const ttl = Math.ceil((cycleEnd.getTime() - Date.now()) / 1000) + 3600;
+    const ttl = Math.ceil((cycleEnd.getTime() - Date.now()) / 1000) + 3600;
 
-  await redis.set(`applied_tier:${shop}`, "STANDARD", { EX: ttl });
+    await redis.set(`applied_tier:${shop}`, "STANDARD", { EX: ttl });
 
-  await redis.zAdd("store_expiry_queue", {
-    score: cycleEnd.getTime(),
-    value: shop,
-  });
+    await redis.zAdd("store_expiry_queue", {
+      score: cycleEnd.getTime(),
+      value: shop,
+    });
 
-  // Optional but recommended
-  await redis.set(`order_count:${shop}`, 0);
+    // Optional but recommended
+    await redis.set(`order_count:${shop}`, 0);
 
-  console.log("✅ Webhook billing + Redis sync complete", {
-    shop,
-    chargeAmount,
-  });
+    console.log("✅ Webhook billing + Redis sync complete", {
+      shop,
+      chargeAmount,
+    });
+  } finally {
+    await redis.del(lockKey);
+  }
 
   return new Response();
 };

@@ -13,14 +13,14 @@ export const TRIAL_DAYS = 15;
 // initial  susbcription config (used in subscription creation subscription.server.js)
 export const SUBSCRIPTION_CONFIG = {
   isTestMode: true,
-  cappedAmount: 149.99,
+  cappedAmount: 100000,
   currencyCode: "USD",
   intervalDays: "EVERY_30_DAYS",
 };
 
 /**
  * Supported plan keys
- * @typedef {"TRIAL" | "STANDARD" | "GROW" | "ENTERPRISE"} PlanKey
+ * @typedef {"TRIAL" | "STARTER" | "GROW" | "PREMIUM" | "ENTERPRISE"} PlanKey
  */
 
 export const BILLING_PLANS = {
@@ -30,24 +30,35 @@ export const BILLING_PLANS = {
     orderThreshold: 0,
   },
 
-  STANDARD: {
-    key: "STANDARD",
-    basePrice: 15,
+  STARTER: {
+    key: "STARTER",
+    basePrice: 24,
     orderThreshold: 0,
   },
 
   GROW: {
     key: "GROW",
-    basePrice: 40,
-    orderThreshold: 2000,
+    basePrice: 42,
+    orderThreshold: 1000,
+  },
+
+  PREMIUM: {
+    key: "PREMIUM",
+    basePrice: 59,
+    orderThreshold: 3000,
   },
 
   ENTERPRISE: {
     key: "ENTERPRISE",
-    basePrice: 50,
-    orderThreshold: 5000,
+    basePrice: 89,
+    orderThreshold: 7000,
   },
 };
+
+// initial base amount at webhook creation (used in webhooks.app.create_subscription.jsx)
+export function getBaseUsageAmount() {
+  return BILLING_PLANS.STARTER.basePrice;
+}
 
 /* ----------------------------------
    Plan ranking (used for upgrades)
@@ -55,9 +66,10 @@ export const BILLING_PLANS = {
 
 export const PLAN_RANK = {
   TRIAL: -1,
-  STANDARD: 0,
+  STARTER: 0,
   GROW: 1,
-  ENTERPRISE: 2,
+  PREMIUM: 2,
+  ENTERPRISE: 3,
 };
 
 /* ----------------------------------
@@ -74,11 +86,15 @@ export function resolvePlanByOrders(orderCount) {
     return "ENTERPRISE";
   }
 
+  if (orderCount > BILLING_PLANS.PREMIUM.orderThreshold) {
+    return "PREMIUM";
+  }
+
   if (orderCount > BILLING_PLANS.GROW.orderThreshold) {
     return "GROW";
   }
 
-  return "STANDARD";
+  return "STARTER";
 }
 
 /**

@@ -1,3 +1,4 @@
 {"level":"info","message":"Received webhook request","requestId":"3e016e55-c48f-542e-afbf-75af55c12815","timestamp":"2026-01-13T10:06:45.084Z"}
 {"level":"info","message":"Received webhook request","requestId":"048e5010-e969-5527-8576-e239d680763d","timestamp":"2026-01-13T10:07:33.851Z"}
 {"level":"info","message":"Received webhook request","requestId":"85990f80-b405-5354-81b0-94589263be94","timestamp":"2026-01-13T10:07:52.897Z"}
+{"level":"info","message":"✅ Order queued:","orderId":"6629105729784","requestId":"e8d9d58f-fdc1-5368-ba9c-3edc8a3587a8","storeId":"basic-optimaio-cart.myshopify.com","timestamp":"2026-01-15T07:22:42.113Z"}

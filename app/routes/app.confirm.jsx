@@ -5,10 +5,14 @@ import prisma from "../db.server";
 import { createUsageCharge } from "./utils/createUsageCharge.server";
 import { useLoaderData } from "@remix-run/react";
 import { ensureRedisConnected } from "./utils/redis.server";
-import { BILLING_PLANS, BILLING_DAYS } from "./config/billingPlans";
+import {
+  getBaseUsageAmount,
+  BILLING_PLANS,
+  BILLING_DAYS,
+} from "./config/billingPlans";
 
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
-const BASE_USAGE_AMOUNT = BILLING_PLANS.STANDARD.basePrice;
+const BASE_USAGE_AMOUNT = BILLING_PLANS.STARTER.basePrice;
 
 /* ---------------- UI ---------------- */
 export default function BillingComplete() {

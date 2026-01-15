@@ -9,7 +9,6 @@ import {
   Button,
   Icon,
   Divider,
-  ButtonGroup,
   Badge,
 } from "@shopify/polaris";
 import { CheckCircleIcon, ArrowLeftIcon } from "@shopify/polaris-icons";
@@ -107,7 +106,10 @@ export const action = async ({ request }) => {
     const now = new Date();
 
     if (!storeInfo) {
-      // First install ever
+      // Absolute first install (no row yet)
+      trialDays = TRIAL_DAYS;
+    } else if (storeInfo.trialUsed === false && !storeInfo.trialEndsAt) {
+      // First-time user, store row exists but trial never started
       trialDays = TRIAL_DAYS;
     } else if (storeInfo.trialEndsAt && now < storeInfo.trialEndsAt) {
       // Resume remaining trial
