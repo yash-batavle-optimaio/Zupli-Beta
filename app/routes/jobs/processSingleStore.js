@@ -3,6 +3,7 @@ import { ensureRedisConnected } from "../utils/redis.server";
 import { callShopAdminGraphQL } from "../utils/shopifyGraphql.server";
 import crypto from "node:crypto";
 import { BILLING_PLANS, BILLING_DAYS } from "../config/billingPlans";
+import { log } from "../utils/logger.server";
 
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
 const BASE_USAGE_AMOUNT = BILLING_PLANS.STARTER.basePrice;
@@ -18,9 +19,18 @@ export async function processSingleStoreExpiry(shop) {
 
   try {
     const lock = await redis.set(lockKey, lockValue, { NX: true, EX: 60 });
-    if (!lock) return;
+    if (!lock) {
+      log.info("Billing lock already held", {
+        event: "billing.lock.skipped",
+        shop,
+      });
+      return;
+    }
 
-    console.log("🔁 Rolling billing cycle for:", shop);
+    log.info("Billing rollover started", {
+      event: "billing.rollover.started",
+      shop,
+    });
 
     // 2️⃣ Load OPEN cycle (DB is source of truth)
     const openCycle = await prisma.storeUsage.findFirst({
@@ -31,20 +41,28 @@ export async function processSingleStoreExpiry(shop) {
       orderBy: { cycleEnd: "desc" },
     });
 
-    if (!openCycle) return;
-
-    if (!openCycle.subscriptionLineItemId) {
-      console.warn(
-        "⚠️ Missing subscriptionLineItemId, skipping billing for",
+    if (!openCycle) {
+      log.warn("No open billing cycle found", {
+        event: "billing.open_cycle.missing",
         shop,
-      );
+      });
       return;
     }
 
-    console.log("📦 Billing rollover", {
+    if (!openCycle.subscriptionLineItemId) {
+      log.warn("Subscription line item missing", {
+        event: "billing.subscription_line_item.missing",
+        shop,
+        cycleId: String(openCycle.id),
+      });
+      return;
+    }
+
+    log.info("Billing context loaded", {
+      event: "billing.context.loaded",
       shop,
-      cycleId: openCycle.id,
-      cycleEnd: openCycle.cycleEnd,
+      cycleId: String(openCycle.id),
+      cycleEnd: openCycle.cycleEnd.toISOString(),
     });
 
     const discount = await prisma.storeDiscount.findFirst({
@@ -91,24 +109,32 @@ export async function processSingleStoreExpiry(shop) {
     let chargeAmount = BASE_USAGE_AMOUNT;
 
     if (discount) {
+      const before = chargeAmount;
+
       if (discount.discountType === "FLAT") {
         chargeAmount -= discount.discountValue;
-      }
-
-      if (discount.discountType === "PERCENT") {
-        const discountValue = Number(
+      } else if (discount.discountType === "PERCENT") {
+        chargeAmount -= Number(
           ((chargeAmount * discount.discountValue) / 100).toFixed(2),
         );
-        chargeAmount -= discountValue;
       }
+
+      log.info("Discount applied", {
+        event: "billing.discount.applied",
+        shop,
+        before,
+        after: chargeAmount,
+        discountType: discount.discountType,
+      });
     }
 
     // Hard guard
     if (chargeAmount <= 0) {
-      console.log("⚠️ Renewal skipped due to discount", {
+      log.warn("Billing charge skipped due to discount", {
+        event: "billing.charge.skipped",
         shop,
-        BASE_USAGE_AMOUNT,
-        finalCharge: chargeAmount,
+        baseAmount: BASE_USAGE_AMOUNT,
+        finalAmount: chargeAmount,
       });
       return;
     }
@@ -142,6 +168,12 @@ export async function processSingleStoreExpiry(shop) {
     if (errors?.length) {
       throw new Error(`Shopify billing error: ${errors[0].message}`);
     }
+
+    log.info("Usage charge created", {
+      event: "billing.charge.created",
+      shop,
+      amount: chargeAmount,
+    });
 
     // 5️⃣ Compute next cycle from LAST cycle end (correct)
     const cycleStart = new Date(openCycle.cycleEnd);
@@ -200,9 +232,19 @@ export async function processSingleStoreExpiry(shop) {
       value: shop,
     });
 
-    console.log("✅ Billing cycle renewed for:", shop);
+    log.info("Billing cycle renewed", {
+      event: "billing.renewed",
+      shop,
+      cycleEnd: cycleEnd.toISOString(),
+      amount: chargeAmount,
+    });
   } catch (err) {
-    console.error("❌ Cron error:", err);
+    log.error("Billing rollover failed", {
+      event: "billing.failed",
+      shop,
+      error: err.message,
+      stack: err.stack,
+    });
   } finally {
     // 🔓 SAFE UNLOCK (OWNERSHIP CHECK)
     const current = await redis.get(lockKey);

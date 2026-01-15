@@ -1,22 +1,35 @@
 import cron from "node-cron";
 import prisma from "../../db.server";
 import { ensureRedisConnected } from "../utils/redis.server";
+import { log } from "../utils/logger.server";
+import { withRequestContext } from "../utils/requestContext.server";
+import { getRequestId } from "../utils/requestId.server";
+import crypto from "node:crypto";
 
 /**
  * Flush Redis order queues → DB (BillingOrder)
- * Runs every hour
+ *
+ * Design:
+ * - Redis lists buffer orders for performance
+ * - DB is source of truth
+ * - Per-store Redis lock prevents concurrent flush
+ * - Idempotent via DB unique constraint + skipDuplicates
  */
 async function flushOrdersToDBHourly() {
   const redis = await ensureRedisConnected();
 
-  console.log("🧹 Starting hourly order flush...");
+  log.info("Order flush scan started", {
+    event: "orders.flush.scan.started",
+  });
 
   try {
     // 1️⃣ Find all store queues
     const keys = await redis.keys("order_queue:*");
 
     if (!keys.length) {
-      console.log("ℹ️ No order queues found");
+      log.info("No order queues found", {
+        event: "orders.flush.queue.empty",
+      });
       return;
     }
 
@@ -25,16 +38,31 @@ async function flushOrdersToDBHourly() {
 
       // 🔒 Per-store lock (prevents concurrent flush)
       const lockKey = `flush_lock:${storeId}`;
-      const lock = await redis.set(lockKey, "1", {
+      const lockValue = crypto.randomUUID();
+      const lock = await redis.set(lockKey, lockValue, {
         NX: true,
         EX: 60 * 5, // 5 minutes
       });
-      if (!lock) continue;
+
+      if (!lock) {
+        log.info("Flush lock already held, skipping store", {
+          event: "orders.flush.lock.skipped",
+          storeId,
+        });
+        continue;
+      }
 
       try {
         // 2️⃣ Read all queued orders
         const rawOrders = await redis.lRange(key, 0, -1);
-        if (!rawOrders.length) continue;
+
+        if (!rawOrders.length) {
+          log.info("No orders found in queue", {
+            event: "orders.flush.queue.empty.store",
+            storeId,
+          });
+          continue;
+        }
 
         const orders = rawOrders.map((o) => JSON.parse(o));
 
@@ -54,31 +82,56 @@ async function flushOrdersToDBHourly() {
         // 4️⃣ Clear Redis queue AFTER DB success
         await redis.del(key);
 
-        console.log("✅ Hourly orders flushed", {
+        log.info("Orders flushed successfully", {
+          event: "orders.flush.completed",
           storeId,
           count: orders.length,
         });
       } finally {
         // 🔓 Always release lock
-        await redis.del(lockKey);
+        const current = await redis.get(lockKey);
+        if (current === lockValue) {
+          await redis.del(lockKey);
+        }
       }
     }
   } catch (err) {
-    console.error("❌ Hourly order flush failed:", err);
+    log.error("Order flush failed", {
+      event: "orders.flush.failed",
+      error: err.message,
+      stack: err.stack,
+    });
   }
+  log.info("Order flush scan completed", {
+    event: "orders.flush.scan.completed",
+  });
 }
 
 /* ----------------------------------
    Run every hour (minute 0)
 ---------------------------------- */
-cron.schedule("*/60 * * * *", async () => {
-  console.log("⏰ Running hourly order flush cron...");
-  await flushOrdersToDBHourly();
+cron.schedule("*/30 * * * *", async () => {
+  const requestId = getRequestId();
+
+  await withRequestContext({ requestId }, async () => {
+    log.info("Hourly order flush cron triggered", {
+      event: "orders.flush.cron.triggered",
+    });
+
+    await flushOrdersToDBHourly();
+  });
 });
 
 // For manual triggering
 // ✅ Correct named export
 export async function flushOrdersToDBHourlyManual() {
-  console.log("⏰ Manually Running order flush cron...");
-  await flushOrdersToDBHourly();
+  const requestId = getRequestId();
+
+  await withRequestContext({ requestId }, async () => {
+    log.info("Manual order flush triggered", {
+      event: "orders.flush.manual.triggered",
+    });
+
+    await flushOrdersToDBHourly();
+  });
 }

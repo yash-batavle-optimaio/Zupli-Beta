@@ -9,11 +9,19 @@ export const action = async ({ request }) => {
   const requestId = getRequestId(request);
 
   return withRequestContext({ requestId }, async () => {
+    log.info("Webhook received", {
+      event: "webhook.received",
+    });
+
     const { topic, payload, session, shop } =
       await authenticate.webhook(request);
 
     // 🚨 Fast exit (important for Shopify retries)
     if (!session || topic !== "ORDERS_CREATE") {
+      log.info("Webhook ignored", {
+        event: "webhook.ignored",
+        topic,
+      });
       return new Response("ok");
     }
 
@@ -21,7 +29,13 @@ export const action = async ({ request }) => {
 
     const orderId = String(payload.id);
     const storeId = shop;
+    const shopDomain = shop;
 
+    log.info("Order create webhook validated", {
+      event: "webhook.orders_create.valid",
+      shop: shopDomain,
+      orderId,
+    });
     // new code block
 
     const now = Date.now();
@@ -30,9 +44,10 @@ export const action = async ({ request }) => {
     const expiryScore = await redis.zScore("store_expiry_queue", storeId);
 
     if (expiryScore && Number(expiryScore) <= now) {
-      log.info("⏳ Billing cycle expired before order, forcing renewal", {
-        storeId,
-        expiry: new Date(Number(expiryScore)),
+      log.warn("Billing cycle expired before order", {
+        event: "billing.expired",
+        shop: shopDomain,
+        expiry: new Date(Number(expiryScore)).toISOString(),
       });
 
       // 🔥 Force billing rollover (safe: has lock inside)
@@ -82,17 +97,21 @@ export const action = async ({ request }) => {
      * redis@4 behavior:
      * SET NX returns "OK" or null
      */
-    const setResult = results?.[0];
 
-    if (setResult !== "OK") {
+    if (results?.[0] !== "OK") {
       // Duplicate webhook (Shopify retry or double delivery)
-      log.info("⚠️ Duplicate order ignored:", orderId);
+      log.warn("Duplicate order ignored", {
+        event: "order.duplicate",
+        shop: shopDomain,
+        orderId,
+      });
       return new Response("ok");
     }
 
-    log.info("✅ Order queued:", {
+    log.info("Order queued", {
+      event: "order.queued",
+      shop: shopDomain,
       orderId,
-      storeId,
     });
 
     return new Response();

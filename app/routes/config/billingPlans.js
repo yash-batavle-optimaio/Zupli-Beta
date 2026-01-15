@@ -60,6 +60,8 @@ export function getBaseUsageAmount() {
   return BILLING_PLANS.STARTER.basePrice;
 }
 
+export const BASE_PLAN = "STARTER";
+
 /* ----------------------------------
    Plan ranking (used for upgrades)
 ---------------------------------- */
