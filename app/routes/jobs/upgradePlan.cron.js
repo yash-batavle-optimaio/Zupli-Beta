@@ -9,9 +9,10 @@ import {
   PLAN_RANK,
   BASE_PLAN,
 } from "../config/billingPlans";
-import { log } from "../utils/logger.server";
-import { withRequestContext } from "../utils/requestContext.server";
-import { getRequestId } from "../utils/requestId.server";
+import { log } from "../logger/logger.server";
+import { withRequestContext } from "../logger/requestContext.server";
+import { getRequestId } from "../logger/requestId.server";
+
 /* ---------------- Shopify Mutation ---------------- */
 const CHARGE_MUTATION = `
   mutation AppUsageRecordCreate(

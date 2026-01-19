@@ -1,9 +1,9 @@
 import cron from "node-cron";
 import prisma from "../../db.server";
 import { ensureRedisConnected } from "../utils/redis.server";
-import { log } from "../utils/logger.server";
-import { withRequestContext } from "../utils/requestContext.server";
-import { getRequestId } from "../utils/requestId.server";
+import { log } from "../logger/logger.server";
+import { withRequestContext } from "../logger/requestContext.server";
+import { getRequestId } from "../logger/requestId.server";
 import crypto from "node:crypto";
 
 /**

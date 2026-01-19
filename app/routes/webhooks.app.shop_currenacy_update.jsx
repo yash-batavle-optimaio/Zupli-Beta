@@ -1,7 +1,7 @@
 import { authenticate } from "../shopify.server";
-import { log } from "./utils/logger.server";
-import { withRequestContext } from "./utils/requestContext.server";
-import { getRequestId } from "./utils/requestId.server";
+import { log } from "./logger/logger.server";
+import { withRequestContext } from "./logger/requestContext.server";
+import { getRequestId } from "./logger/requestId.server";
 
 // Use ENV variables (recommended)
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;

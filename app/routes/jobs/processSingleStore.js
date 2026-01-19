@@ -3,7 +3,7 @@ import { ensureRedisConnected } from "../utils/redis.server";
 import { callShopAdminGraphQL } from "../utils/shopifyGraphql.server";
 import crypto from "node:crypto";
 import { BILLING_PLANS, BILLING_DAYS } from "../config/billingPlans";
-import { log } from "../utils/logger.server";
+import { log } from "../logger/logger.server";
 
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
 const BASE_USAGE_AMOUNT = BILLING_PLANS.STARTER.basePrice;

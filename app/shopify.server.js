@@ -8,6 +8,8 @@ import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prism
 import prisma from "./db.server";
 import "dotenv/config";
 import { upsertStoreInfo } from "./models/storeInfo.server";
+import { ensureBxgyDiscountExists } from "./models/bxgyDiscount.server";
+import { ensureTieredDiscountExists } from "./models/tieredDiscount.server";
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -22,6 +24,8 @@ const shopify = shopifyApp({
       console.log("App installed for:", session.shop);
       // ✅ Save store info on install / reinstall
       await upsertStoreInfo(session.shop);
+      await ensureBxgyDiscountExists(admin, session.shop);
+      await ensureTieredDiscountExists(admin, session.shop);
     },
   },
   distribution: AppDistribution.AppStore,

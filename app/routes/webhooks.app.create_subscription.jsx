@@ -3,9 +3,9 @@ import prisma from "../db.server";
 import { callShopAdminGraphQL } from "./utils/shopifyGraphql.server";
 import { ensureRedisConnected } from "./utils/redis.server";
 import { BILLING_PLANS, BILLING_DAYS, BASE_PLAN } from "./config/billingPlans";
-import { log } from "./utils/logger.server";
-import { withRequestContext } from "./utils/requestContext.server";
-import { getRequestId } from "./utils/requestId.server";
+import { log } from "./logger/logger.server";
+import { withRequestContext } from "./logger/requestContext.server";
+import { getRequestId } from "./logger/requestId.server";
 
 const BASE_USAGE_AMOUNT = BILLING_PLANS.STARTER.basePrice;
 const BILLING_CYCLE_DAYS = BILLING_DAYS;
