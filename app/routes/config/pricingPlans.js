@@ -1,101 +1,40 @@
 import {
-  CheckCircleIcon,
   StoreIcon,
-  ArrowLeftIcon,
   RewardIcon,
-  OrganizationIcon,
   ChartHistogramGrowthIcon,
+  OrganizationIcon,
 } from "@shopify/polaris-icons";
 
-export const PRICING_PLANS = [
-  {
-    id: "trial",
-    title: "Free",
-    subtitle: "Free forever",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    disabled: true,
-    icon: StoreIcon,
-    features: [
-      "Cart theming",
-      "Floating cart button",
-      "In-cart discount box",
-      "Sticky bar ATC widget",
-      "Multi-language support",
-      "In-cart terms check box",
-      "Custom CSS & JS support",
-      "Customisable cart drawer",
-    ],
-  },
-  {
-    id: "starter",
-    title: "Starter",
-    subtitle: "Fixed pricing based on Shopify plan",
-    monthlyPrice: 14,
-    yearlyPrice: 150, // 2 months free
-    icon: RewardIcon,
-    features: [
-      "Everything in Free plan",
-      "In-cart upsell",
-      "Cart progress bar",
-      "One-click upsell",
-      "Free gift campaigns",
-      "Cart announcement bar",
-      "Cart countdown timer",
-      "Priority chat support",
-      "Volume discount campaign",
-      "Buy X Get Y campaigns",
-    ],
-  },
-  {
-    id: "grow",
-    title: "Grow",
-    subtitle: "For stores using Shopify Plan",
-    monthlyPrice: 29,
-    yearlyPrice: 290,
-    icon: ChartHistogramGrowthIcon,
-    features: [
-      "Unlimited campaigns",
-      "Free gift campaigns",
-      "Buy X get Y campaign",
-      "Urgency timers & cart announcements",
-      "Volume discount campaigns",
-      "One-click upsell campaign",
-      "Up to 5000 orders per month",
-    ],
-  },
-  {
-    id: "premium",
-    title: "Premium",
-    subtitle: "For stores using Advanced Shopify Plan",
-    monthlyPrice: 59,
-    yearlyPrice: 590,
-    icon: OrganizationIcon,
-    features: [
-      "Unlimited campaigns",
-      "Free gift campaigns",
-      "Buy X get Y campaign",
-      "Urgency timers & cart announcements",
-      "Volume discount campaigns",
-      "One-click upsell campaign",
-      "Up to 5000 orders per month",
-    ],
-  },
-  {
-    id: "enterprise",
-    title: "Enterprise",
-    subtitle: "For stores using Advanced Shopify Plan",
-    monthlyPrice: 89,
-    yearlyPrice: 590,
-    icon: OrganizationIcon,
-    features: [
-      "Unlimited campaigns",
-      "Free gift campaigns",
-      "Buy X get Y campaign",
-      "Urgency timers & cart announcements",
-      "Volume discount campaigns",
-      "One-click upsell campaign",
-      "Up to 5000 orders per month",
-    ],
-  },
-];
+import { BILLING_PLANS } from "./billingPlans";
+import { FREE_FEATURES, PAID_FEATURES } from "./pricingFeatures";
+
+const ICON_MAP = {
+  trial: StoreIcon,
+  starter: RewardIcon,
+  grow: ChartHistogramGrowthIcon,
+  premium: OrganizationIcon,
+  enterprise: OrganizationIcon,
+};
+
+const SUBTITLE_MAP = {
+  trial: "Free forever",
+  starter: "0-1000 orders/month",
+  grow: "1001-3000 orders/month",
+  premium: "3001-7000 orders/month",
+  enterprise: "7000+ orders/month",
+};
+
+export const PRICING_PLANS = Object.values(BILLING_PLANS).map((plan) => {
+  const isFree = plan.id === "trial";
+
+  return {
+    id: plan.id,
+    title: plan.title,
+    subtitle: SUBTITLE_MAP[plan.id],
+    monthlyPrice: plan.basePrice,
+    yearlyPrice: plan.yearlyPrice,
+    disabled: isFree,
+    icon: ICON_MAP[plan.id],
+    features: isFree ? FREE_FEATURES : PAID_FEATURES,
+  };
+});

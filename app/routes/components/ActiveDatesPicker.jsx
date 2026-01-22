@@ -207,7 +207,7 @@ export default function ActiveDatesPicker({ value, onChange }) {
 
         <Box paddingBlockStart="400">
           {/* ---------- START DATE ---------- */}
-          <InlineStack gap="400" align="center">
+          <InlineStack gap="400" align="start">
             <Box width="200px">
               <Popover
                 active={startPopoverActive}
@@ -242,7 +242,7 @@ export default function ActiveDatesPicker({ value, onChange }) {
 
           {/* ---------- CHECKBOX ---------- */}
           <Box paddingBlockStart="400">
-            <InlineStack align="center" gap="400">
+            <InlineStack align="start" gap="400">
               <Box width="200px" display="flex" justifyContent="flex-start">
                 <div style={{ marginLeft: "4px" }}>
                   <Checkbox
@@ -258,7 +258,7 @@ export default function ActiveDatesPicker({ value, onChange }) {
           {/* ---------- END DATE ---------- */}
           {hasEndDate && (
             <Box paddingBlockStart="400">
-              <InlineStack gap="400" align="center">
+              <InlineStack gap="400" align="start">
                 <Box width="200px">
                   <Popover
                     active={endPopoverActive}

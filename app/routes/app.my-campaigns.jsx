@@ -1888,7 +1888,7 @@ export default function CampaignIndexTable() {
               )}
 
               {/* Original Preview card (only for non-bxgy) */}
-              {!isBxgy && <PreviewCard goals={goals} selected={selected} />}
+              {!isBxgy && <PreviewCard goals={goals} selected={selected} defaultCurrency={defaultCurrency} />}
             </BlockStack>
           </Layout.Section>
         </Layout>

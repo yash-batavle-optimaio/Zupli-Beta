@@ -18,7 +18,7 @@ export async function requireBilling({ admin, session }) {
   const subscription = data.data.currentAppInstallation.activeSubscriptions[0];
 
   if (!subscription || subscription.status !== "ACTIVE") {
-    throw redirect(`/app/billing?shop=${session.shop}&host=${session.host}`);
+    throw redirect(`/app/pricing?shop=${session.shop}&host=${session.host}`);
   }
 
   return subscription;

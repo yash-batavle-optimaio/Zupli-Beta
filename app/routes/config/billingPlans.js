@@ -26,34 +26,50 @@ export const SUBSCRIPTION_CONFIG = {
 export const BILLING_PLANS = {
   TRIAL: {
     key: "TRIAL",
+    id: "trial",
+    title: "Free",
     basePrice: 0,
+    yearlyPrice: 0,
     orderThreshold: 0,
   },
 
   STARTER: {
     key: "STARTER",
+    id: "starter",
+    title: "Starter",
     basePrice: 14,
+    yearlyPrice: 150,
     orderThreshold: 0,
   },
 
   GROW: {
     key: "GROW",
+    id: "grow",
+    title: "Grow",
     basePrice: 29,
+    yearlyPrice: 290,
     orderThreshold: 1000,
   },
 
   PREMIUM: {
     key: "PREMIUM",
+    id: "premium",
+    title: "Premium",
     basePrice: 59,
+    yearlyPrice: 590,
     orderThreshold: 3000,
   },
 
   ENTERPRISE: {
     key: "ENTERPRISE",
+    id: "enterprise",
+    title: "Enterprise",
     basePrice: 89,
+    yearlyPrice: 890,
     orderThreshold: 7000,
   },
 };
+
 
 // initial base amount at webhook creation (used in webhooks.app.create_subscription.jsx)
 export function getBaseUsageAmount() {

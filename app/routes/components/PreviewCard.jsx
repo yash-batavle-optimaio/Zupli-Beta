@@ -4,11 +4,13 @@ import {
   Text,
   Icon,
   RangeSlider,
-  Box
+  Box,
+  BlockStack,
 } from "@shopify/polaris";
 import { GiftCardIcon } from "@shopify/polaris-icons";
+import { CURRENCY_SYMBOLS } from "../utils/currencyHandler/mapCurrency";
 
-export default function PreviewCard({ goals = [], selected = "cart" }) {
+export default function PreviewCard({ goals = [], selected = "cart", defaultCurrency }) {
   // ------------------------------
   // INTERNAL STATE
   // ------------------------------
@@ -116,6 +118,7 @@ const pageFromProgress = Math.floor(safeIndex / 3);
     return "";
   };
 
+
   return (
     <Card>
       <Box padding="400">
@@ -133,7 +136,7 @@ const pageFromProgress = Math.floor(safeIndex / 3);
             Add{" "}
             <strong>
               {selected === "cart"
-                ? `₹${nextGoal.target - current}`
+                ? `${CURRENCY_SYMBOLS[defaultCurrency] || defaultCurrency} ${nextGoal.target - current}`
                 : `${nextGoal.target - current} more items`}
             </strong>{" "}
             to unlock <strong>{getGoalLabel(nextGoal)}</strong>
@@ -311,7 +314,8 @@ const pageFromProgress = Math.floor(safeIndex / 3);
       </Box>
 
       {/* ------------------- SLIDER ------------------- */}
-      <Box padding="400" borderTopWidth="1" borderColor="border-subdued">
+      <Box padding="400" borderTopWidth="1" borderColor="border-subdued" >
+         <BlockStack gap="300">
         <Text>Use this slider to simulate customer progress</Text>
 
         <RangeSlider
@@ -324,6 +328,7 @@ const pageFromProgress = Math.floor(safeIndex / 3);
           }}
           output
         />
+        </BlockStack>
       </Box>
     </Card>
   );
