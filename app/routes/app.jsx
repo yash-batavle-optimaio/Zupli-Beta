@@ -26,6 +26,7 @@ export default function App() {
         <Link to="/app/my-campaigns">My campaigns</Link>
         <Link to="/app/timer">Scarcity Timer</Link>
         <Link to="/app/cart-appearance">Cart Appearance</Link>
+        <Link to="/app/upsell">Upsell</Link>
         <Link to="/app/settings">Settings</Link>
         <Link to="/app/cart-drawer">Support</Link>
       </NavMenu>

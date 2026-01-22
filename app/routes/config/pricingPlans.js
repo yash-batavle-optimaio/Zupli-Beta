@@ -9,7 +9,7 @@ import {
 
 export const PRICING_PLANS = [
   {
-    id: "free",
+    id: "trial",
     title: "Free",
     subtitle: "Free forever",
     monthlyPrice: 0,
@@ -28,10 +28,10 @@ export const PRICING_PLANS = [
     ],
   },
   {
-    id: "standard",
-    title: "Standard",
+    id: "starter",
+    title: "Starter",
     subtitle: "Fixed pricing based on Shopify plan",
-    monthlyPrice: 15,
+    monthlyPrice: 14,
     yearlyPrice: 150, // 2 months free
     icon: RewardIcon,
     features: [
@@ -65,10 +65,27 @@ export const PRICING_PLANS = [
     ],
   },
   {
+    id: "premium",
+    title: "Premium",
+    subtitle: "For stores using Advanced Shopify Plan",
+    monthlyPrice: 59,
+    yearlyPrice: 590,
+    icon: OrganizationIcon,
+    features: [
+      "Unlimited campaigns",
+      "Free gift campaigns",
+      "Buy X get Y campaign",
+      "Urgency timers & cart announcements",
+      "Volume discount campaigns",
+      "One-click upsell campaign",
+      "Up to 5000 orders per month",
+    ],
+  },
+  {
     id: "enterprise",
     title: "Enterprise",
     subtitle: "For stores using Advanced Shopify Plan",
-    monthlyPrice: 59,
+    monthlyPrice: 89,
     yearlyPrice: 590,
     icon: OrganizationIcon,
     features: [

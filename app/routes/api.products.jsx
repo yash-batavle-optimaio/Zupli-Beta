@@ -26,6 +26,7 @@ export const loader = async ({ request }) => {
             node {
               id
               title
+              handle
               featuredImage { url altText }
               images(first: 1) {
                 edges { node { url altText } }
@@ -65,6 +66,7 @@ export const loader = async ({ request }) => {
         return {
           id: node.id,
           title: node.title,
+          handle: node.handle,
           featuredImage: fallbackImage,
           variants: node.variants.edges.map(({ node: v }) => ({
             id: v.id,
@@ -72,6 +74,7 @@ export const loader = async ({ request }) => {
             price: v.price,
             availableForSale: v.availableForSale,
             image: v.image || fallbackImage,
+            productHandle: node.handle,
           })),
         };
       });

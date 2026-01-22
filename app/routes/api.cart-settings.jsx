@@ -113,6 +113,8 @@ export const action = async ({ request }) => {
         zIndex: body.zIndex ?? existingSettings.zIndex,
         announcementBar:
           body.announcementBar ?? existingSettings.announcementBar,
+        cartFeatures: body.cartFeatures ?? existingSettings.cartFeatures,
+        cartWidget: body.cartWidget ?? existingSettings.cartWidget,
       };
 
       if (mergedSettings.announcementBar?.messages) {

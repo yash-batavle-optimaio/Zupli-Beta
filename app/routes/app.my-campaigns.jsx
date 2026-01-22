@@ -19,6 +19,7 @@ import {
   Divider,
   Collapsible,
   Link,
+  Banner,
 } from "@shopify/polaris";
 import { useEffect, useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
@@ -30,7 +31,7 @@ import {
   DiscountIcon,
   SettingsIcon,
   BlogIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
 } from "@shopify/polaris-icons";
 import { Icon } from "@shopify/polaris";
 import ProductPickerModal from "./components/ProductPickerModal";
@@ -41,15 +42,12 @@ import ActiveDatesPicker from "./components/ActiveDatesPicker";
 import ContentEditor from "./components/ContentEditor";
 import PreviewCard from "./components/PreviewCard";
 
-
-
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
   return null;
 };
 
 export default function CampaignIndexTable() {
-
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCampaign, setEditingCampaign] = useState(null);
@@ -96,8 +94,8 @@ export default function CampaignIndexTable() {
 
   const [isInitialized, setIsInitialized] = useState(false);
 
-const [tieredErrors, setTieredErrors] = useState({}); // { [goalId]: { target, products, giftQty, discountValue, discountType } }
-const [tieredGeneralErrors, setTieredGeneralErrors] = useState([]); // e.g., ["Add at least one goal"]
+  const [tieredErrors, setTieredErrors] = useState({}); // { [goalId]: { target, products, giftQty, discountValue, discountType } }
+  const [tieredGeneralErrors, setTieredGeneralErrors] = useState([]); // e.g., ["Add at least one goal"]
 
   const [bxgyErrors, setBxgyErrors] = useState({});
 
@@ -106,164 +104,165 @@ const [tieredGeneralErrors, setTieredGeneralErrors] = useState([]); // e.g., ["A
   const [defaultCurrency, setDefaultCurrency] = useState("Amt");
 
   useEffect(() => {
-  async function fetchDefaultCurrency() {
-        try {
-      const res = await fetch("/api/get-shopDefaultCurrency");
-      const data = await res.json();
-      console.log("💱 Shop currency:", data);
+    async function fetchDefaultCurrency() {
+      try {
+        const res = await fetch("/api/get-shopDefaultCurrency");
+        const data = await res.json();
+        console.log("💱 Shop currency:", data);
 
-      if (data.ok && data.currencyCode) {
-        setDefaultCurrency(data.currencyCode);
+        if (data.ok && data.currencyCode) {
+          setDefaultCurrency(data.currencyCode);
+        }
+      } catch (err) {
+        console.error("⚠️ Failed to load currency:", err);
       }
-    } catch (err) {
-      console.error("⚠️ Failed to load currency:", err);
     }
-  }
 
-  fetchDefaultCurrency();
-}, []);
+    fetchDefaultCurrency();
+  }, []);
 
   function validateTiered(goals = [], trackType = "cart") {
-  const perGoal = {}; // { [id]: { field: "error" } }
-  const general = [];
+    const perGoal = {}; // { [id]: { field: "error" } }
+    const general = [];
 
-  if (!goals.length) {
-    general.push("Add at least one goal.");
+    if (!goals.length) {
+      general.push("Add at least one goal.");
+      return { perGoal, general };
+    }
+
+    // target checks (required, positive, integer for quantity)
+    const targets = [];
+    goals.forEach((g) => {
+      const errs = {};
+      const t = Number(g.target);
+
+      if (!Number.isFinite(t) || t <= 0) {
+        errs.target = "Target is required and must be greater than 0";
+      } else {
+        // Save for global ascending check
+        targets.push({ id: g.id, value: t });
+        if (trackType === "quantity" && !Number.isInteger(t)) {
+          errs.target = "Target must be a whole number (quantity)";
+        }
+      }
+
+      // per-type checks
+      if (g.type === "free_product") {
+        if (!Array.isArray(g.products) || g.products.length === 0) {
+          errs.products = "Select at least one gift product";
+        }
+        if (!g.giftQty || g.giftQty <= 0) {
+          errs.giftQty = "Gift quantity must be at least 1";
+        }
+      }
+
+      if (g.type === "order_discount") {
+        const validTypes = ["percentage", "amount"];
+        if (!validTypes.includes(g.discountType)) {
+          errs.discountType = "Choose a discount type";
+        }
+        const v = Number(g.discountValue);
+        if (g.discountType === "percentage") {
+          if (!Number.isFinite(v) || v <= 0 || v > 100) {
+            errs.discountValue = "Enter a % between 1 and 100";
+          }
+        } else if (g.discountType === "amount") {
+          if (!Number.isFinite(v) || v <= 0) {
+            errs.discountValue = "Enter an amount greater than 0";
+          }
+        }
+      }
+
+      // free_shipping has no extra fields
+
+      if (Object.keys(errs).length) perGoal[g.id] = errs;
+    });
+
+    // 📈 Global ascending check
+    if (targets.length > 1) {
+      // Sort by user-defined order (not automatically by value)
+      for (let i = 1; i < goals.length; i++) {
+        const prev = Number(goals[i - 1].target);
+        const curr = Number(goals[i].target);
+
+        // Only check valid numbers
+        if (Number.isFinite(prev) && Number.isFinite(curr)) {
+          if (curr <= prev) {
+            general.push(
+              `Milestone ${i + 1} must be greater than Milestone ${i} .`,
+              //  `Milestone ${i + 1} (${curr}) must be greater than Milestone ${i} (${prev}).`
+            );
+          }
+        }
+      }
+
+      // Check for duplicates or wrong ordering overall
+      const ordered = [...targets].sort((a, b) => a.value - b.value);
+      for (let i = 0; i < ordered.length; i++) {
+        if (i > 0 && ordered[i].value <= ordered[i - 1].value) {
+          general.push(
+            "Milestone targets must be strictly increasing (no duplicates).",
+          );
+          break;
+        }
+      }
+    }
+
     return { perGoal, general };
   }
 
-  // target checks (required, positive, integer for quantity)
-  const targets = [];
-  goals.forEach((g) => {
-    const errs = {};
-    const t = Number(g.target);
+  const validateBxgy = (goal) => {
+    const errors = {};
 
-    if (!Number.isFinite(t) || t <= 0) {
-      errs.target = "Target is required and must be greater than 0";
-    } else {
-      // Save for global ascending check
-      targets.push({ id: g.id, value: t });
-      if (trackType === "quantity" && !Number.isInteger(t)) {
-        errs.target = "Target must be a whole number (quantity)";
-      }
+    if (!goal) return errors;
+
+    // Quantities
+    if (!goal.buyQty || goal.buyQty <= 0)
+      errors.buyQty = "Buy quantity must be greater than 0";
+
+    if (!goal.getQty || goal.getQty <= 0)
+      errors.getQty = "Get quantity must be greater than 0";
+
+    // Spend / Collection validations
+    if (goal.bxgyMode === "spend_any_collection") {
+      if (!goal.spendAmount || goal.spendAmount <= 0)
+        errors.spendAmount = "Spend amount must be greater than 0";
+      if (!goal.buyCollections?.length)
+        errors.buyCollections = "Select at least one collection";
     }
 
-    // per-type checks
-    if (g.type === "free_product") {
-      if (!Array.isArray(g.products) || g.products.length === 0) {
-        errs.products = "Select at least one gift product";
+    if (goal.bxgyMode === "product" && !goal.buyProducts?.length)
+      errors.buyProducts = "Select at least one product to buy";
+
+    if (goal.bxgyMode === "collection" && !goal.buyCollections?.length)
+      errors.buyCollections = "Select at least one collection to buy";
+
+    // Reward validation (always required)
+    if (!goal.getProducts?.length)
+      errors.getProducts = "Select at least one reward product";
+
+    const validDiscountTypes = ["free_product", "percentage", "fixed"];
+    if (!validDiscountTypes.includes(goal.discountType)) {
+      errors.discountType = "Choose a valid discount type";
+    } else if (goal.discountType === "percentage") {
+      const v = Number(goal.discountValue);
+      if (!Number.isFinite(v) || v <= 0 || v > 100) {
+        errors.discountValue = "Enter a % between 1 and 100";
       }
-      if (!g.giftQty || g.giftQty <= 0) {
-        errs.giftQty = "Gift quantity must be at least 1";
+    } else if (goal.discountType === "fixed") {
+      const v = Number(goal.discountValue);
+      if (!Number.isFinite(v) || v <= 0) {
+        errors.discountValue = "Enter a fixed amount greater than 0";
       }
+    } else if (goal.discountType === "free_product") {
+      // Optional normalization (keeps UI consistent)
+      // If you want to enforce 100% for free, uncomment next two lines:
+      // if (goal.discountValue !== 100) {
+      //   errors.discountValue = "Free product implies 100% off";
+      // }
     }
-
-    if (g.type === "order_discount") {
-      const validTypes = ["percentage", "amount"];
-      if (!validTypes.includes(g.discountType)) {
-        errs.discountType = "Choose a discount type";
-      }
-      const v = Number(g.discountValue);
-      if (g.discountType === "percentage") {
-        if (!Number.isFinite(v) || v <= 0 || v > 100) {
-          errs.discountValue = "Enter a % between 1 and 100";
-        }
-      } else if (g.discountType === "amount") {
-        if (!Number.isFinite(v) || v <= 0) {
-          errs.discountValue = "Enter an amount greater than 0";
-        }
-      }
-    }
-
-    // free_shipping has no extra fields
-
-    if (Object.keys(errs).length) perGoal[g.id] = errs;
-  });
-
- // 📈 Global ascending check
-  if (targets.length > 1) {
-    // Sort by user-defined order (not automatically by value)
-    for (let i = 1; i < goals.length; i++) {
-      const prev = Number(goals[i - 1].target);
-      const curr = Number(goals[i].target);
-
-      // Only check valid numbers
-      if (Number.isFinite(prev) && Number.isFinite(curr)) {
-        if (curr <= prev) {
-          general.push(
-            `Milestone ${i + 1} must be greater than Milestone ${i} .`
-                    //  `Milestone ${i + 1} (${curr}) must be greater than Milestone ${i} (${prev}).`
-          );
-        }
-      }
-    }
-
-    // Check for duplicates or wrong ordering overall
-    const ordered = [...targets].sort((a, b) => a.value - b.value);
-    for (let i = 0; i < ordered.length; i++) {
-      if (i > 0 && ordered[i].value <= ordered[i - 1].value) {
-        general.push("Milestone targets must be strictly increasing (no duplicates).");
-        break;
-      }
-    }
-  }
-
-
-  return { perGoal, general };
-}
-
-const validateBxgy = (goal) => {
-  const errors = {};
-
-  if (!goal) return errors;
-
-  // Quantities
-  if (!goal.buyQty || goal.buyQty <= 0)
-    errors.buyQty = "Buy quantity must be greater than 0";
-
-  if (!goal.getQty || goal.getQty <= 0)
-    errors.getQty = "Get quantity must be greater than 0";
-
-  // Spend / Collection validations
-  if (goal.bxgyMode === "spend_any_collection") {
-    if (!goal.spendAmount || goal.spendAmount <= 0)
-      errors.spendAmount = "Spend amount must be greater than 0";
-    if (!goal.buyCollections?.length)
-      errors.buyCollections = "Select at least one collection";
-  }
-
-  if (goal.bxgyMode === "product" && !goal.buyProducts?.length)
-    errors.buyProducts = "Select at least one product to buy";
-
-  if (goal.bxgyMode === "collection" && !goal.buyCollections?.length)
-    errors.buyCollections = "Select at least one collection to buy";
-
-  // Reward validation (always required)
-  if (!goal.getProducts?.length)
-    errors.getProducts = "Select at least one reward product";
-
-   const validDiscountTypes = ["free_product", "percentage", "fixed"];
-  if (!validDiscountTypes.includes(goal.discountType)) {
-    errors.discountType = "Choose a valid discount type";
-  } else if (goal.discountType === "percentage") {
-    const v = Number(goal.discountValue);
-    if (!Number.isFinite(v) || v <= 0 || v > 100) {
-      errors.discountValue = "Enter a % between 1 and 100";
-    }
-  } else if (goal.discountType === "fixed") {
-    const v = Number(goal.discountValue);
-    if (!Number.isFinite(v) || v <= 0) {
-      errors.discountValue = "Enter a fixed amount greater than 0";
-    }
-  } else if (goal.discountType === "free_product") {
-    // Optional normalization (keeps UI consistent)
-    // If you want to enforce 100% for free, uncomment next two lines:
-    // if (goal.discountValue !== 100) {
-    //   errors.discountValue = "Free product implies 100% off";
-    // }
-  }
-  return errors;
-};
+    return errors;
+  };
 
   // LOAD CAMPAIGNS FROM METAFIELD
   // ------------------------------------------------------------------
@@ -291,16 +290,16 @@ const validateBxgy = (goal) => {
   }, []);
 
   // Define default structure once at top (or in a separate constants file)
-const defaultContent = {
-  giftTitleBefore: "",
-  giftTitleAfter: "",
-  progressTextBefore: "",
-  progressTextAfter: "",
-  batchTitle: "",
-  offerTitle: "",
-  offerSubtitle: "",
-  offerSubtitleAfter: "",
-};
+  const defaultContent = {
+    giftTitleBefore: "",
+    giftTitleAfter: "",
+    progressTextBefore: "",
+    progressTextAfter: "",
+    batchTitle: "",
+    offerTitle: "",
+    offerSubtitle: "",
+    offerSubtitleAfter: "",
+  };
 
   // ------------------------------------------------------------------
   // WHEN USER CLICKS "EDIT" ON A CAMPAIGN
@@ -318,7 +317,7 @@ const defaultContent = {
           start: { date: null, time: null },
           end: null,
         },
-content: editingCampaign.content || {},  
+        content: editingCampaign.content || {},
       };
 
       setName(snap.campaignName);
@@ -326,7 +325,7 @@ content: editingCampaign.content || {},
       setGoals(snap.goals);
       setSelected(snap.trackType);
       setActiveDates(snap.activeDates);
-          setContent(snap.content); // ✅ new
+      setContent(snap.content); // ✅ new
       setInitialSnapshot(snap);
 
       setSaveBarOpen(false);
@@ -366,34 +365,34 @@ content: editingCampaign.content || {},
   // ------------------------------------------------------------------
   // DETECT UNSAVED CHANGES
   // ------------------------------------------------------------------
- useEffect(() => {
-  if (!isInitialized || !initialSnapshot) return;
+  useEffect(() => {
+    if (!isInitialized || !initialSnapshot) return;
 
-  const changed =
-    name !== initialSnapshot.campaignName ||
-    status !== initialSnapshot.status ||
-    selected !== initialSnapshot.trackType ||
-    JSON.stringify(goals) !== JSON.stringify(initialSnapshot.goals) ||
-    JSON.stringify(activeDates) !== JSON.stringify(initialSnapshot.activeDates) ||
-    JSON.stringify(content) !== JSON.stringify(initialSnapshot.content);
+    const changed =
+      name !== initialSnapshot.campaignName ||
+      status !== initialSnapshot.status ||
+      selected !== initialSnapshot.trackType ||
+      JSON.stringify(goals) !== JSON.stringify(initialSnapshot.goals) ||
+      JSON.stringify(activeDates) !==
+        JSON.stringify(initialSnapshot.activeDates) ||
+      JSON.stringify(content) !== JSON.stringify(initialSnapshot.content);
 
-  setSaveBarOpen(changed);
-}, [
-  isInitialized,
-  name,
-  status,
-  selected,
-  goals,
-  activeDates,
-  content,
-  initialSnapshot,
-]);
-
+    setSaveBarOpen(changed);
+  }, [
+    isInitialized,
+    name,
+    status,
+    selected,
+    goals,
+    activeDates,
+    content,
+    initialSnapshot,
+  ]);
 
   // ------------------------------------------------------------------
   // SAVE CAMPAIGN
   // ------------------------------------------------------------------
-  const tzOffsetMinutes = -new Date().getTimezoneOffset(); 
+  const tzOffsetMinutes = -new Date().getTimezoneOffset();
   const handleSaveCampaign = async () => {
     const campaignData = {
       id: editingCampaign?.id || `cmp_${Date.now()}`,
@@ -403,40 +402,38 @@ content: editingCampaign.content || {},
       goals,
       campaignType: editingCampaign?.campaignType || "tiered",
       activeDates, // ✅ Add this line
-        content, // ✅ new
-          tzOffsetMinutes,
+      content, // ✅ new
+      tzOffsetMinutes,
     };
 
-
-     // 🧩 Validate campaign name
-if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
-  setNameError("Enter a campaign name (at least 3 characters).");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  return;
-} else {
-  setNameError("");
-}
-
-
-     if (campaignData.campaignType === "bxgy") {
-    const errors = validateBxgy(goals[0]);
-    if (Object.keys(errors).length > 0) {
-      setBxgyErrors(errors);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return; // stop save
-    } else {
-      setBxgyErrors({});
-    }
-  } else {
-    // ✅ Tiered validation
-    const { perGoal, general } = validateTiered(goals, selected);
-    setTieredErrors(perGoal);
-    setTieredGeneralErrors(general);
-    if (general.length || Object.keys(perGoal).length) {
+    // 🧩 Validate campaign name
+    if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
+      setNameError("Enter a campaign name (at least 3 characters).");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
+    } else {
+      setNameError("");
     }
-  }
+
+    if (campaignData.campaignType === "bxgy") {
+      const errors = validateBxgy(goals[0]);
+      if (Object.keys(errors).length > 0) {
+        setBxgyErrors(errors);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return; // stop save
+      } else {
+        setBxgyErrors({});
+      }
+    } else {
+      // ✅ Tiered validation
+      const { perGoal, general } = validateTiered(goals, selected);
+      setTieredErrors(perGoal);
+      setTieredGeneralErrors(general);
+      if (general.length || Object.keys(perGoal).length) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+    }
 
     const res = await fetch("/api/save-campaign", {
       method: "POST",
@@ -530,10 +527,6 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
   // BXGY EDITOR (Buy X Get Y) — Enhanced with Product / Collection / All Modes
   // BXGY EDITOR (Buy X Get Y) — Clean, Logical Structure
   const renderBxgyEditor = (bxgyErrors, setBxgyErrors) => {
-
-    
-
-
     const bxgyGoal = goals[0] || {
       id: `BXGY_${Date.now()}`,
       bxgyMode: "product", // "product" | "collection" | "all"
@@ -550,9 +543,6 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
 
     return (
       <Card sectioned>
-
-  
-
         <Text variant="headingSm" fontWeight="bold">
           Buy X Get Y Type
         </Text>
@@ -596,7 +586,6 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
             >
               Spend X on Any Collection
             </Button>
-            
 
             <Button
               pressed={bxgyGoal.bxgyMode === "collection"}
@@ -653,7 +642,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                 onChange={(val) =>
                   setGoals([{ ...bxgyGoal, buyQty: Number(val) }])
                 }
-                 error={bxgyErrors.buyQty}
+                error={bxgyErrors.buyQty}
               />
             </div>
           )}
@@ -671,11 +660,10 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                 Select Buy Products
               </Button>
               {bxgyErrors.buyProducts && (
-  <Text tone="critical" variant="bodySm">
-    {bxgyErrors.buyProducts}
-  </Text>
-)}
-
+                <Text tone="critical" variant="bodySm">
+                  {bxgyErrors.buyProducts}
+                </Text>
+              )}
 
               {(bxgyGoal.buyProducts || []).length > 0 && (
                 <div style={{ marginTop: "0.75rem" }}>
@@ -710,10 +698,11 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                             objectFit: "cover",
                           }}
                         />
-                      <Text>
-  {p.productTitle ? `${p.productTitle} - ${p.title}` : p.title}
-</Text>
-
+                        <Text>
+                          {p.productTitle
+                            ? `${p.productTitle} - ${p.title}`
+                            : p.title}
+                        </Text>
                       </div>
                       <Button
                         plain
@@ -768,11 +757,10 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                 Select Eligible Collections
               </Button>
               {bxgyErrors.buyCollections && (
-  <Text tone="critical" variant="bodySm">
-    {bxgyErrors.buyCollections}
-  </Text>
-)}
-
+                <Text tone="critical" variant="bodySm">
+                  {bxgyErrors.buyCollections}
+                </Text>
+              )}
 
               {(bxgyGoal.buyCollections || []).length > 0 && (
                 <div style={{ marginTop: "0.75rem" }}>
@@ -845,11 +833,10 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                 Select Buy Collections
               </Button>
               {bxgyErrors.buyCollections && (
-  <Text tone="critical" variant="bodySm">
-    {bxgyErrors.buyCollections}
-  </Text>
-)}
-
+                <Text tone="critical" variant="bodySm">
+                  {bxgyErrors.buyCollections}
+                </Text>
+              )}
 
               {(bxgyGoal.buyCollections || []).length > 0 && (
                 <div style={{ marginTop: "0.75rem" }}>
@@ -932,7 +919,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
               onChange={(val) =>
                 setGoals([{ ...bxgyGoal, getQty: Number(val) }])
               }
-                error={bxgyErrors.getQty}
+              error={bxgyErrors.getQty}
             />
           </div>
           <Button
@@ -947,11 +934,10 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
             Select Reward Products
           </Button>
           {bxgyErrors.getProducts && (
-  <Text tone="critical" variant="bodySm">
-    {bxgyErrors.getProducts}
-  </Text>
-)}
-
+            <Text tone="critical" variant="bodySm">
+              {bxgyErrors.getProducts}
+            </Text>
+          )}
 
           {(bxgyGoal.getProducts || []).length > 0 && (
             <div style={{ marginTop: "0.75rem" }}>
@@ -1069,14 +1055,15 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
             <Box paddingBlockStart="400">
               <TextField
                 label="Discount Value"
-                prefix={bxgyGoal.discountType === "fixed" ? defaultCurrency: "%"}
+                prefix={
+                  bxgyGoal.discountType === "fixed" ? defaultCurrency : "%"
+                }
                 type="number"
                 value={bxgyGoal.discountValue || ""}
                 onChange={(val) =>
                   setGoals([{ ...bxgyGoal, discountValue: Number(val) }])
                 }
-               error={bxgyErrors.discountValue}
-
+                error={bxgyErrors.discountValue}
               />
             </Box>
           )}
@@ -1138,15 +1125,29 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
 
     return (
       <Page
-        title="Edit Campaign"
-        backAction={{
-          content: "Back",
-          onAction: () => {
-            if (shopify?.saveBar) shopify.saveBar.hide("campaign-save-bar");
-            setSaveBarOpen(false);
-            setEditingCampaign(null);
-          },
-        }}
+        title={
+          <InlineStack gap="500" blockAlign="center">
+            <Button
+              icon={ArrowLeftIcon}
+              plain
+              onClick={() => {
+                if (shopify?.saveBar) {
+                  shopify.saveBar.hide("campaign-save-bar");
+                }
+                setSaveBarOpen(false);
+                setEditingCampaign(null);
+              }}
+            />
+            <Text variant="headingLg" as="h2">
+              Edit Campaign
+            </Text>
+            {status === "draft" ? (
+              <Badge tone="info">Draft</Badge>
+            ) : (
+              <Badge tone="success">Active</Badge>
+            )}
+          </InlineStack>
+        }
       >
         <Layout>
           {/* -------------------------------------------------
@@ -1161,13 +1162,20 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
               >
                 {!isBxgy && (
                   <Card sectioned>
-                          {!isBxgy && tieredGeneralErrors.length > 0 && (
-  <Box padding="200" background="bg-surface-success" borderRadius="200" tone="critical">
-    {tieredGeneralErrors.map((msg, i) => (
-      <Text key={i} tone="critical" variant="bodySm">{msg}</Text>
-    ))}
-  </Box>
-)}
+                    {!isBxgy && tieredGeneralErrors.length > 0 && (
+                      <Box
+                        padding="200"
+                        background="bg-surface-success"
+                        borderRadius="200"
+                        tone="critical"
+                      >
+                        {tieredGeneralErrors.map((msg, i) => (
+                          <Text key={i} tone="critical" variant="bodySm">
+                            {msg}
+                          </Text>
+                        ))}
+                      </Box>
+                    )}
                     <Text variant="bodyLg" fontWeight="bold">
                       Campaign ID:
                     </Text>
@@ -1253,7 +1261,9 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                       type="number"
                                       value={goal.target || ""}
                                       prefix={
-                                        selected === "cart" ? defaultCurrency : "Qty"
+                                        selected === "cart"
+                                          ? defaultCurrency
+                                          : "Qty"
                                       }
                                       onChange={(val) =>
                                         setGoals((prev) =>
@@ -1267,7 +1277,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                           ),
                                         )
                                       }
-                                        error={tieredErrors[goal.id]?.target}
+                                      error={tieredErrors[goal.id]?.target}
                                     />
                                   </div>
                                 </Layout.Section>
@@ -1354,14 +1364,18 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                                 setPickerOpen(true);
                                               }}
                                             >
-                                              
                                               Add a product
                                             </Button>
 
-                                            {tieredErrors[goal.id]?.products && (
-  <Text tone="critical" variant="bodySm">{tieredErrors[goal.id].products}</Text>
-)}
-
+                                            {tieredErrors[goal.id]
+                                              ?.products && (
+                                              <Text
+                                                tone="critical"
+                                                variant="bodySm"
+                                              >
+                                                {tieredErrors[goal.id].products}
+                                              </Text>
+                                            )}
                                           </div>
 
                                           <div
@@ -1407,9 +1421,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                                   −
                                                 </Button>
 
-                                                <Button >
-                                                  {goal.giftQty}
-                                                </Button>
+                                                <Button>{goal.giftQty}</Button>
 
                                                 <Button
                                                   onClick={() =>
@@ -1429,12 +1441,20 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                                   +
                                                 </Button>
                                               </ButtonGroup>
-                                              {tieredErrors[goal.id]?.giftQty && (
-  <Box paddingBlockStart="200">
-    <Text tone="critical" variant="bodySm">{tieredErrors[goal.id].giftQty}</Text>
-  </Box>
-)}
-
+                                              {tieredErrors[goal.id]
+                                                ?.giftQty && (
+                                                <Box paddingBlockStart="200">
+                                                  <Text
+                                                    tone="critical"
+                                                    variant="bodySm"
+                                                  >
+                                                    {
+                                                      tieredErrors[goal.id]
+                                                        .giftQty
+                                                    }
+                                                  </Text>
+                                                </Box>
+                                              )}
                                             </div>
                                           </div>
                                         </>
@@ -1595,13 +1615,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                                 Amount off
                                               </Button>
                                             </ButtonGroup>
-
-                                            
                                           </div>
-                                          
-
-    
-
 
                                           <div
                                             style={{
@@ -1611,7 +1625,6 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                             <Text fontWeight="bold">
                                               Enter the value
                                             </Text>
-                                            
 
                                             <TextField
                                               prefix={
@@ -1634,13 +1647,20 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                                                 )
                                               }
                                             />
-                                                                                  {tieredErrors[goal.id]?.discountValue && (
-  <Box paddingBlockStart="200">
-    <Text tone="critical" variant="bodySm">
-      {tieredErrors[goal.id].discountValue}
-    </Text>
-  </Box>
-)}
+                                            {tieredErrors[goal.id]
+                                              ?.discountValue && (
+                                              <Box paddingBlockStart="200">
+                                                <Text
+                                                  tone="critical"
+                                                  variant="bodySm"
+                                                >
+                                                  {
+                                                    tieredErrors[goal.id]
+                                                      .discountValue
+                                                  }
+                                                </Text>
+                                              </Box>
+                                            )}
                                           </div>
                                         </div>
                                       )}
@@ -1694,74 +1714,78 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                   </>
                 )}
               </Colabssiblecom>
-              
+
               {/* Content */}
 
-                 <Colabssiblecom
-              title="Content"
-              description="Customize content shown for this campaign and manage translations to languages."
-              icon={BlogIcon}>
-
-{isBxgy ? (
-  <ContentEditor
-    value={content}
-    onChange={(val) => setContent(val)}
-    type="bxgy"
-  />
-) : (
-  <BlockStack gap="400">
-    {goals.map((goal, index) => {
-      const num = index + 1;
-      const suffix =
-        num === 1 ? "st" :
-        num === 2 ? "nd" :
-        num === 3 ? "rd" : "th";
-
-      const goalKey = `${num}${suffix} goal`;
-      const isOpen = activeContentGoal === goalKey;
-
-      return (
-        <Card key={goal.id}>
-          <Box >
-            {/* Header Row */}
-            <InlineStack align="space-between" blockAlign="center">
-              <Text variant="headingSm" fontWeight="bold">
-                {goalKey}
-              </Text>
-
-              <Button
-                onClick={() =>
-                  setActiveContentGoal(isOpen ? null : goalKey)
-                }
+              <Colabssiblecom
+                title="Content"
+                description="Customize content shown for this campaign and manage translations to languages."
+                icon={BlogIcon}
               >
-                {isOpen ? "Close" : "Edit"}
-              </Button>
-            </InlineStack>
+                {isBxgy ? (
+                  <ContentEditor
+                    value={content}
+                    onChange={(val) => setContent(val)}
+                    type="bxgy"
+                  />
+                ) : (
+                  <BlockStack gap="400">
+                    {goals.map((goal, index) => {
+                      const num = index + 1;
+                      const suffix =
+                        num === 1
+                          ? "st"
+                          : num === 2
+                            ? "nd"
+                            : num === 3
+                              ? "rd"
+                              : "th";
 
-            {/* Collapsible Content */}
-            <Collapsible open={isOpen}>
-              <Box paddingBlockStart="400">
-                <ContentEditor
-                  value={content[goalKey] || {}}
-                  onChange={(val) =>
-                    setContent((prev) => ({
-                      ...prev,
-                      [goalKey]: val,
-                    }))
-                  }
-                  type="tiered"
-                />
-              </Box>
-            </Collapsible>
-          </Box>
-        </Card>
-      );
-    })}
-  </BlockStack>
-)}
+                      const goalKey = `${num}${suffix} goal`;
+                      const isOpen = activeContentGoal === goalKey;
 
+                      return (
+                        <Card key={goal.id}>
+                          <Box>
+                            {/* Header Row */}
+                            <InlineStack
+                              align="space-between"
+                              blockAlign="center"
+                            >
+                              <Text variant="headingSm" fontWeight="bold">
+                                {goalKey}
+                              </Text>
 
+                              <Button
+                                onClick={() =>
+                                  setActiveContentGoal(isOpen ? null : goalKey)
+                                }
+                              >
+                                {isOpen ? "Close" : "Edit"}
+                              </Button>
+                            </InlineStack>
 
+                            {/* Collapsible Content */}
+                            <Collapsible open={isOpen}>
+                              <Box paddingBlockStart="400">
+                                <ContentEditor
+                                  value={content[goalKey] || {}}
+                                  onChange={(val) =>
+                                    setContent((prev) => ({
+                                      ...prev,
+                                      [goalKey]: val,
+                                    }))
+                                  }
+                                  type="tiered"
+                                />
+                              </Box>
+                            </Collapsible>
+                          </Box>
+                        </Card>
+                      );
+                    })}
+                  </BlockStack>
+                )}
               </Colabssiblecom>
 
               {/* ------------------------------------------------------------------ */}
@@ -1777,8 +1801,6 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                   onChange={(dates) => setActiveDates(dates)}
                 />
               </Colabssiblecom>
-
-          
             </BlockStack>
           </Layout.Section>
 
@@ -1788,25 +1810,47 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
           <Layout.Section variant="oneThird">
             <BlockStack gap="400">
               {/* Status + Name card (always) */}
-              <Card>
-                <div style={{ padding: "1rem" }}>
-                  <Select
-                    label="Status"
-                    options={statusOptions}
-                    onChange={setStatus}
-                    value={status}
-                  />
-
-                  <div style={{ marginTop: "1rem" }}>
-                    <TextField
-                      label="Campaign name"
-                      value={name}
-                      onChange={setName}
-                        error={nameError}
+              {status !== "active" ? (
+                <Banner title="This campaign is paused" tone="warning">
+                  <div style={{ padding: "1rem" }}>
+                    <Select
+                      label="Status"
+                      options={statusOptions}
+                      onChange={setStatus}
+                      value={status}
                     />
+
+                    <div style={{ marginTop: "1rem" }}>
+                      <TextField
+                        label="Campaign name"
+                        value={name}
+                        onChange={setName}
+                        error={nameError}
+                      />
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Banner>
+              ) : (
+                <Card>
+                  <div style={{ padding: "1rem" }}>
+                    <Select
+                      label="Status"
+                      options={statusOptions}
+                      onChange={setStatus}
+                      value={status}
+                    />
+
+                    <div style={{ marginTop: "1rem" }}>
+                      <TextField
+                        label="Campaign name"
+                        value={name}
+                        onChange={setName}
+                        error={nameError}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              )}
 
               {/* BXGY Summary card (only in bxgy mode) */}
               {isBxgy && (
@@ -1832,7 +1876,9 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
                           Discount:{" "}
                           <strong>
                             {g.discountValue || 0}
-                            {g.discountType === "fixed" ? ` ${defaultCurrency} off` : "% off"}
+                            {g.discountType === "fixed"
+                              ? ` ${defaultCurrency} off`
+                              : "% off"}
                           </strong>
                         </Text>
                       );
@@ -1842,10 +1888,7 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
               )}
 
               {/* Original Preview card (only for non-bxgy) */}
-              {!isBxgy && (
-        <PreviewCard goals={goals} selected={selected} />
-
-              )}
+              {!isBxgy && <PreviewCard goals={goals} selected={selected} />}
             </BlockStack>
           </Layout.Section>
         </Layout>
@@ -1992,18 +2035,20 @@ if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
   ));
 
   return (
-    <Page title={
-          <InlineStack gap="500" blockAlign="center">
-            <Button
-              icon={ArrowLeftIcon}
-              plain
-              onClick={() => window.history.back()}
-            />
-            <Text variant="headingLg" as="h2">
-              My Campaigns
-            </Text>
-          </InlineStack>
-        }>
+    <Page
+      title={
+        <InlineStack gap="500" blockAlign="center">
+          <Button
+            icon={ArrowLeftIcon}
+            plain
+            onClick={() => window.history.back()}
+          />
+          <Text variant="headingLg" as="h2">
+            My Campaigns
+          </Text>
+        </InlineStack>
+      }
+    >
       {loading ? (
         <Spinner accessibilityLabel="Loading campaigns" size="large" />
       ) : (

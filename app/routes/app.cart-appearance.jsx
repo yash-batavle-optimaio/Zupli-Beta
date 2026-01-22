@@ -24,6 +24,8 @@ import {
   CartSaleIcon,
   ColorIcon,
   EnvelopeSoftPackIcon,
+  LayoutSectionIcon,
+  AppsIcon,
 } from "@shopify/polaris-icons";
 
 import ThemeGrid from "./components/ThemeGrid";
@@ -32,10 +34,12 @@ import CustomizeColorSelector from "./components/CustomizeColorSelector";
 import CodeEditor from "./components/CodeEditor";
 import ZIndexEditor from "./components/ZIndexEditor";
 import AnnouncementBarSettings from "./components/AnnouncementBarSettings";
-
+import CartFeaturesSettings from "./components/CartFeaturesSettings";
 import { useState, useEffect } from "react";
 import { SaveBar, useAppBridge } from "@shopify/app-bridge-react";
+import CartWidgetSettings from "./components/CartWidgetSettings";
 
+// this is new code
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
@@ -51,26 +55,39 @@ export const loader = async ({ request }) => {
 
   const res = await admin.graphql(query);
   const data = await res.json();
-  let settings = {
+  const DEFAULT_SETTINGS = {
     theme: "theme1",
-    announcementBar: {
-      messages: [""],
-      autoScroll: false,
+    announcementBar: { messages: [], autoScroll: false },
+    cartFeatures: {
+      offerAnimation: "confetti",
+      discountCodeInput: true,
+      orderNotes: true,
     },
-    bannerStyle: {
-      bannerType: "solid",
+    cartWidget: {
+      position: "right",
+      widgetColor: "#000000",
+      showFloatingWidget: true,
     },
+    bannerStyle: { bannerType: "solid" },
     colors: {},
     customCSS: "",
     customJS: "",
     zIndex: "auto",
   };
 
-  console.log("Loader fetched data:", data);
+  let settings;
+
   if (data?.data?.shop?.metafield?.value) {
     try {
-      settings = JSON.parse(data.data.shop.metafield.value);
-    } catch (e) {}
+      settings = {
+        ...DEFAULT_SETTINGS,
+        ...JSON.parse(data.data.shop.metafield.value),
+      };
+    } catch {
+      settings = DEFAULT_SETTINGS;
+    }
+  } else {
+    settings = DEFAULT_SETTINGS;
   }
 
   return json({ settings });
@@ -82,6 +99,24 @@ export default function ResourceDetailsLayout() {
   const shopify = useAppBridge();
 
   // Local states
+  const [cartFeatures, setCartFeatures] = useState(
+    () =>
+      settings.cartFeatures || {
+        offerAnimation: "confetti",
+        discountCodeInput: true,
+        orderNotes: true,
+      },
+  );
+
+  const [cartWidget, setCartWidget] = useState(
+    () =>
+      settings.cartWidget || {
+        position: "right",
+        widgetColor: "#000000",
+        showFloatingWidget: true,
+      },
+  );
+
   const [selectedTheme, setSelectedTheme] = useState(() => settings.theme);
   const [bannerStyle, setBannerStyle] = useState(() => ({
     bannerType: settings.bannerStyle?.bannerType || "solid",
@@ -122,6 +157,8 @@ export default function ResourceDetailsLayout() {
         customJS: settings.customJS,
         zIndex: settings.zIndex,
         announcementBar: settings.announcementBar,
+        cartFeatures: settings.cartFeatures,
+        cartWidget: settings.cartWidget,
       };
       setInitialSnapshot(snap);
       setIsInitialized(true);
@@ -142,6 +179,20 @@ export default function ResourceDetailsLayout() {
     setAnnouncementBar(
       settings.announcementBar || { messages: [""], autoScroll: false },
     );
+    setCartFeatures(
+      settings.cartFeatures || {
+        offerAnimation: "confetti",
+        discountCodeInput: true,
+        orderNotes: true,
+      },
+    );
+    setCartWidget(
+      settings.cartWidget || {
+        position: "right",
+        widgetColor: "#000000",
+        showFloatingWidget: true,
+      },
+    );
   }, [settings]);
 
   // Detect changes (like in my-campaign)
@@ -153,14 +204,19 @@ export default function ResourceDetailsLayout() {
     customJS,
     zIndex,
     announcementBar,
+    cartFeatures,
+    cartWidget,
   };
 
   const changed =
+    isInitialized &&
+    initialSnapshot &&
     JSON.stringify(currentSnapshot) !== JSON.stringify(initialSnapshot);
 
-  if (changed !== saveBarOpen) {
+  useEffect(() => {
+    if (!isInitialized) return;
     setSaveBarOpen(changed);
-  }
+  }, [changed, isInitialized]);
 
   // Save settings
   const handleSave = async () => {
@@ -172,6 +228,8 @@ export default function ResourceDetailsLayout() {
       customJS,
       zIndex,
       announcementBar,
+      cartFeatures,
+      cartWidget,
       themeChanged: selectedTheme !== initialSnapshot.theme, // 👈 IMPORTANT
     };
 
@@ -222,11 +280,36 @@ export default function ResourceDetailsLayout() {
               <Colabssiblecom
                 title="Announcement Bar"
                 description="Display announcement messages at the top of the cart."
-                icon={ConfettiIcon}
+                icon={AppsIcon}
               >
                 <AnnouncementBarSettings
                   value={announcementBar}
                   onChange={setAnnouncementBar}
+                />
+              </Colabssiblecom>
+
+              {/* Cart Widget Settings */}
+              <Colabssiblecom
+                title="Cart widget"
+                description="Control cart widget position and visibility."
+                icon={ConfettiIcon}
+              >
+                <CartWidgetSettings
+                  value={cartWidget}
+                  onChange={setCartWidget}
+                />
+              </Colabssiblecom>
+
+              {/* Cart Features */}
+
+              <Colabssiblecom
+                title="Cart features"
+                description="Display cart features."
+                icon={LayoutSectionIcon}
+              >
+                <CartFeaturesSettings
+                  value={cartFeatures}
+                  onChange={setCartFeatures}
                 />
               </Colabssiblecom>
 

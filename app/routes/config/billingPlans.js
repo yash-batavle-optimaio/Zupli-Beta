@@ -32,13 +32,13 @@ export const BILLING_PLANS = {
 
   STARTER: {
     key: "STARTER",
-    basePrice: 24,
+    basePrice: 14,
     orderThreshold: 0,
   },
 
   GROW: {
     key: "GROW",
-    basePrice: 42,
+    basePrice: 29,
     orderThreshold: 1000,
   },
 

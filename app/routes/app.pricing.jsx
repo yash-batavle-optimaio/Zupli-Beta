@@ -10,6 +10,7 @@ import {
   Icon,
   Divider,
   Badge,
+  Banner,
 } from "@shopify/polaris";
 import { CheckCircleIcon, ArrowLeftIcon } from "@shopify/polaris-icons";
 import { useState, useEffect } from "react";
@@ -26,37 +27,45 @@ import { Toast, Frame } from "@shopify/polaris";
 import prisma from "../db.server";
 import { TRIAL_DAYS } from "./config/billingPlans";
 
+    const VALID_PLAN_IDS = PRICING_PLANS.map(p => p.id);
+
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const activeSub = await getActiveSubscription(admin);
 
-  let activePlanId = "free";
+   const activePlanId = resolvePlanIdFromSubscription(activeSub);
 
-  if (activeSub) {
-    // ✅ Subscription exists → at least Standard
-    activePlanId = "standard";
-
-    const usageLineItem = activeSub.lineItems.find(
-      (li) => li.plan.pricingDetails.__typename === "AppUsagePricing",
-    );
-
-    const descriptions =
-      usageLineItem?.usageRecords?.edges.map((e) => e.node.description) || [];
-
-    if (descriptions.some((d) => d.includes("10000"))) {
-      activePlanId = "enterprise";
-    } else if (descriptions.some((d) => d.includes("5000"))) {
-      activePlanId = "grow";
-    } else if (descriptions.some((d) => d.includes("2000"))) {
-      activePlanId = "standard";
-    }
-  }
-
+     
+if (!VALID_PLAN_IDS.includes(activePlanId)) {
+  console.warn("⚠️ Unknown active plan:", activePlanId);
+}
   return json({
     hasActiveSubscription: Boolean(activeSub),
     activePlanId,
   });
 };
+
+
+function resolvePlanIdFromSubscription(activeSub) {
+  if (!activeSub) return "trial"; // Free plan
+
+const usageLineItem = activeSub?.lineItems?.find(
+  (li) => li?.plan?.pricingDetails?.__typename === "AppUsagePricing"
+);
+
+  const descriptions =
+    usageLineItem?.usageRecords?.edges.map(e =>
+      e.node.description.toLowerCase()
+    ) || [];
+
+  if (descriptions.some(d => d.includes("enterprise"))) return "enterprise";
+  if (descriptions.some(d => d.includes("premium"))) return "premium";
+  if (descriptions.some(d => d.includes("grow"))) return "grow";
+  if (descriptions.some(d => d.includes("starter"))) return "starter";
+
+  // fallback (paid but unknown)
+  return "starter";
+}
 
 export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
@@ -155,6 +164,9 @@ function PricingCard({ plan, billingCycle, activePlanId }) {
     plan.monthlyPrice > 0
       ? Math.round((yearlySavings / (plan.monthlyPrice * 12)) * 100)
       : 0;
+
+
+
   return (
     <Card>
       <BlockStack gap="400">
@@ -245,6 +257,26 @@ export default function Pricing() {
     fetcher.submit({ intent: "cancel" }, { method: "post" });
   };
 
+  const isFreePlan = activePlanId === "trial";
+const planLabel =
+  PRICING_PLANS.find((p) => p.id === activePlanId)?.title || "your";
+
+<Banner
+  tone={isFreePlan ? "info" : "success"}
+  title={
+    isFreePlan
+      ? "Upgrade your plan to remove limits and unlock advanced tools."
+      : `You’re currently enjoying all features of the ${planLabel} plan.`
+  }
+>
+  <Text as="p">
+    {isFreePlan
+      ? "Explore advanced campaigns, upsells, and automation built for growing stores."
+      : "You can upgrade, downgrade, or manage your subscription anytime."}
+  </Text>
+</Banner>
+
+
   return (
     <Frame>
       <Page
@@ -261,8 +293,16 @@ export default function Pricing() {
           </InlineStack>
         }
       >
-        <Box paddingBlockEnd="600">
-          <Card>
+<Banner
+  tone={isFreePlan ? "info" : "success"}
+  title={
+    isFreePlan
+      ? "Upgrade your plan to remove limits and unlock advanced tools."
+      : `You’re currently enjoying all features of the ${planLabel} plan.`
+  }
+>
+          <Box paddingBlockEnd="600">
+          
             <BlockStack gap="600">
               {/* Header */}
               <InlineGrid columns="auto 1fr" gap="400" alignItems="center">
@@ -347,8 +387,10 @@ export default function Pricing() {
                 </InlineGrid>
               </Box>
             </BlockStack>
-          </Card>
+          
         </Box>
+</Banner>
+
       </Page>
       {toastActive && <Toast content={toastMessage} onDismiss={toggleToast} />}
     </Frame>

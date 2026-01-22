@@ -14,7 +14,13 @@ export async function getActiveSubscription(admin) {
             usageRecords(first: 20) {
               edges {
                 node {
-                  description
+                   id
+              description
+              createdAt
+              price {
+                amount
+                currencyCode
+              }
                 }
               }
             }
