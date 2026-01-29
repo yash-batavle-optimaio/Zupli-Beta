@@ -200,101 +200,95 @@ export default function ActiveDatesPicker({ value, onChange }) {
 
   return (
     <>
-      <Card sectioned>
-        <Text variant="headingSm" fontWeight="bold">
-          Active dates
-        </Text>
-
-        <Box paddingBlockStart="400">
-          {/* ---------- START DATE ---------- */}
-          <InlineStack gap="400" align="start">
-            <Box width="200px">
-              <Popover
-                active={startPopoverActive}
-                activator={
-                  <div
-                    onClick={() => setStartPopoverActive(true)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <TextField
-                      label="Start date"
-                      prefix={<Icon source={CalendarIcon} tone="base" />}
-                      value={formatLocalYMD(selectedStart.start)}
-                      readOnly
-                    />
-                  </div>
-                }
-                onClose={() => setStartPopoverActive(false)}
-                preferredAlignment="left"
-              >
-                <Box padding="400">
-                  <DatePicker
-                    month={month}
-                    year={year}
-                    onChange={handleStartDateChange}
-                    onMonthChange={handleMonthChange}
-                    selected={selectedStart}
-                  />
-                </Box>
-              </Popover>
-            </Box>
-          </InlineStack>
-
-          {/* ---------- CHECKBOX ---------- */}
-          <Box paddingBlockStart="400">
-            <InlineStack align="start" gap="400">
-              <Box width="200px" display="flex" justifyContent="flex-start">
-                <div style={{ marginLeft: "4px" }}>
-                  <Checkbox
-                    label="Set end date"
-                    checked={hasEndDate}
-                    onChange={handleToggleEndDate}
+      <Box>
+        {/* ---------- START DATE ---------- */}
+        <InlineStack gap="400" align="start">
+          <Box width="50%">
+            <Popover
+              active={startPopoverActive}
+              activator={
+                <div
+                  onClick={() => setStartPopoverActive(true)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <TextField
+                    label="Start date"
+                    prefix={<Icon source={CalendarIcon} tone="base" />}
+                    value={formatLocalYMD(selectedStart.start)}
+                    readOnly
                   />
                 </div>
+              }
+              onClose={() => setStartPopoverActive(false)}
+              preferredAlignment="left"
+            >
+              <Box padding="400">
+                <DatePicker
+                  month={month}
+                  year={year}
+                  onChange={handleStartDateChange}
+                  onMonthChange={handleMonthChange}
+                  selected={selectedStart}
+                />
+              </Box>
+            </Popover>
+          </Box>
+        </InlineStack>
+
+        {/* ---------- CHECKBOX ---------- */}
+        <Box paddingBlockStart="400">
+          <InlineStack align="start" gap="400">
+            <Box width="200px" display="flex" justifyContent="flex-start">
+              <div style={{ marginLeft: "4px" }}>
+                <Checkbox
+                  label="Set end date"
+                  checked={hasEndDate}
+                  onChange={handleToggleEndDate}
+                />
+              </div>
+            </Box>
+          </InlineStack>
+        </Box>
+
+        {/* ---------- END DATE ---------- */}
+        {hasEndDate && (
+          <Box paddingBlockStart="400">
+            <InlineStack gap="400" align="start">
+              <Box width="50%">
+                <Popover
+                  active={endPopoverActive}
+                  activator={
+                    <div
+                      onClick={() => setEndPopoverActive(true)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <TextField
+                        label="End date"
+                        prefix={<Icon source={CalendarIcon} tone="base" />}
+                        value={formatLocalYMD(selectedEnd?.start || today)}
+                        readOnly
+                      />
+                    </div>
+                  }
+                  onClose={() => setEndPopoverActive(false)}
+                  preferredAlignment="left"
+                >
+                  <Box padding="400">
+                    <DatePicker
+                      month={month}
+                      year={year}
+                      onChange={handleEndDateChange}
+                      onMonthChange={handleMonthChange}
+                      selected={selectedEnd || { start: today, end: today }}
+                      disableDatesBefore={disableEndDatesBefore}
+                    />
+                  </Box>
+                </Popover>
               </Box>
             </InlineStack>
           </Box>
-
-          {/* ---------- END DATE ---------- */}
-          {hasEndDate && (
-            <Box paddingBlockStart="400">
-              <InlineStack gap="400" align="start">
-                <Box width="200px">
-                  <Popover
-                    active={endPopoverActive}
-                    activator={
-                      <div
-                        onClick={() => setEndPopoverActive(true)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <TextField
-                          label="End date"
-                          prefix={<Icon source={CalendarIcon} tone="base" />}
-                          value={formatLocalYMD(selectedEnd?.start || today)}
-                          readOnly
-                        />
-                      </div>
-                    }
-                    onClose={() => setEndPopoverActive(false)}
-                    preferredAlignment="left"
-                  >
-                    <Box padding="400">
-                      <DatePicker
-                        month={month}
-                        year={year}
-                        onChange={handleEndDateChange}
-                        onMonthChange={handleMonthChange}
-                        selected={selectedEnd || { start: today, end: today }}
-                        disableDatesBefore={disableEndDatesBefore}
-                      />
-                    </Box>
-                  </Popover>
-                </Box>
-              </InlineStack>
-            </Box>
-          )}
-        </Box>
-      </Card>
+        )}
+      </Box>
 
       {/* 🖤 Keep text/icons black */}
       <style jsx global>{`

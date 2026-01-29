@@ -20,6 +20,7 @@ import {
   CircleLeftIcon,
   CircleRightIcon,
   ArrowLeftIcon,
+  CalendarTimeIcon,
 } from "@shopify/polaris-icons";
 
 import ScarcityTimer from "./components/ScarcityTimer";
@@ -242,7 +243,7 @@ export default function ResourceDetailsLayout() {
                 />
               </Colabssiblecom>
 
-              <Colabssiblecom title="Activation time" icon={CircleRightIcon}>
+              <Colabssiblecom title="Active dates" icon={CalendarTimeIcon}>
                 <TimerDateAndTime
                   value={activeDates}
                   onChange={setActiveDates}

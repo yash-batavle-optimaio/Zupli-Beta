@@ -29,7 +29,7 @@ import {
   CaretDownIcon,
   CaretUpIcon,
   DiscountIcon,
-  SettingsIcon,
+  CalendarIcon,
   BlogIcon,
   ArrowLeftIcon,
 } from "@shopify/polaris-icons";
@@ -41,6 +41,7 @@ import Colabssiblecom from "./components/Colabssiblecom";
 import ActiveDatesPicker from "./components/ActiveDatesPicker";
 import ContentEditor from "./components/ContentEditor";
 import PreviewCard from "./components/PreviewCard";
+import { useRef } from "react";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -51,6 +52,9 @@ export default function CampaignIndexTable() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCampaign, setEditingCampaign] = useState(null);
+
+  const goalRefs = useRef({});
+  const lastAddedGoalId = useRef(null);
 
   // "cart" | "quantity"
   const [selected, setSelected] = useState("cart");
@@ -79,8 +83,6 @@ export default function CampaignIndexTable() {
   const [saveBarOpen, setSaveBarOpen] = useState(false);
   const [initialSnapshot, setInitialSnapshot] = useState(null);
   const shopify = useAppBridge();
-
-  const [shakeSaveBar, setShakeSaveBar] = useState(false);
 
   const [content, setContent] = useState({ title: "", subtitle: "" });
 
@@ -362,6 +364,24 @@ export default function CampaignIndexTable() {
     editingCampaign,
   ]);
 
+  useEffect(() => {
+    if (!lastAddedGoalId.current) return;
+
+    const el = goalRefs.current[lastAddedGoalId.current];
+
+    if (el) {
+      // Polaris layouts need a frame to settle
+      requestAnimationFrame(() => {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+
+    lastAddedGoalId.current = null;
+  }, [goals]);
+
   // ------------------------------------------------------------------
   // DETECT UNSAVED CHANGES
   // ------------------------------------------------------------------
@@ -443,11 +463,24 @@ export default function CampaignIndexTable() {
 
     const data = await res.json();
     if (data.ok) {
-      setEditingCampaign(null);
       setCampaigns(data.campaigns);
-      setInitialSnapshot(null);
+
+      // Update snapshot so SaveBar closes
+      setInitialSnapshot({
+        campaignName: name,
+        status,
+        trackType: selected,
+        goals,
+        campaignType: editingCampaign?.campaignType || "tiered",
+        activeDates,
+        content,
+      });
+
       setSaveBarOpen(false);
-      if (shopify?.saveBar) shopify.saveBar.hide("campaign-save-bar");
+
+      if (shopify?.saveBar) {
+        shopify.saveBar.hide("campaign-save-bar");
+      }
     } else {
       alert("❌ Failed to save campaign");
     }
@@ -459,10 +492,22 @@ export default function CampaignIndexTable() {
   const handleDiscardCampaign = () => {
     const confirmDiscard = window.confirm("Discard changes?");
     if (!confirmDiscard) return;
-    setEditingCampaign(null);
-    setInitialSnapshot(null);
+
+    if (!initialSnapshot) return;
+
+    // Restore previous values
+    setName(initialSnapshot.campaignName);
+    setStatus(initialSnapshot.status);
+    setSelected(initialSnapshot.trackType);
+    setGoals(initialSnapshot.goals);
+    setActiveDates(initialSnapshot.activeDates);
+    setContent(initialSnapshot.content || {});
+
     setSaveBarOpen(false);
-    if (shopify?.saveBar) shopify.saveBar.hide("campaign-save-bar");
+
+    if (shopify?.saveBar) {
+      shopify.saveBar.hide("campaign-save-bar");
+    }
   };
 
   // ------------------------------------------------------------------
@@ -508,7 +553,7 @@ export default function CampaignIndexTable() {
     }
 
     // free_shipping has no extra config initially
-
+    lastAddedGoalId.current = goalId;
     setGoals((prev) => [...prev, newGoal]);
     setActive(false);
   };
@@ -1161,7 +1206,7 @@ export default function CampaignIndexTable() {
                 icon={DiscountIcon}
               >
                 {!isBxgy && (
-                  <Card sectioned>
+                  <>
                     {!isBxgy && tieredGeneralErrors.length > 0 && (
                       <Box
                         padding="200"
@@ -1245,7 +1290,13 @@ export default function CampaignIndexTable() {
 
                       {/* Render all goals (full original milestone editor UI) */}
                       {goals.map((goal, index) => (
-                        <div key={goal.id} style={{ marginTop: "1rem" }}>
+                        <div
+                          key={goal.id}
+                          ref={(el) => {
+                            if (el) goalRefs.current[goal.id] = el;
+                          }}
+                          style={{ marginTop: "1rem" }}
+                        >
                           <Layout>
                             {/* 🔹 Left Side: Goal Input */}
                             <Layout.Section>
@@ -1702,7 +1753,7 @@ export default function CampaignIndexTable() {
                         );
                       }}
                     />
-                  </Card>
+                  </>
                 )}
 
                 {/* BXGY block (single rule). Shown only if campaignType is bxgy */}
@@ -1792,9 +1843,9 @@ export default function CampaignIndexTable() {
               {/* Collapsible Info Section (Modern Polaris) */}
               {/* ------------------------------------------------------------------ */}
               <Colabssiblecom
-                title="Settings"
+                title="Active dates"
                 description="Manage start and end dates for this campaign."
-                icon={SettingsIcon}
+                icon={CalendarIcon}
               >
                 <ActiveDatesPicker
                   value={activeDates}
@@ -1888,7 +1939,14 @@ export default function CampaignIndexTable() {
               )}
 
               {/* Original Preview card (only for non-bxgy) */}
-              {!isBxgy && <PreviewCard goals={goals} selected={selected} defaultCurrency={defaultCurrency} />}
+              {!isBxgy && (
+                <PreviewCard
+                  goals={goals}
+                  selected={selected}
+                  defaultCurrency={defaultCurrency}
+                  content={content}
+                />
+              )}
             </BlockStack>
           </Layout.Section>
         </Layout>
