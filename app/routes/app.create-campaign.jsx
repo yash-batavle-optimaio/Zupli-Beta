@@ -87,14 +87,6 @@ export default function AppIndexPage() {
           </InlineStack>
         }
       >
-        <Tabs tabs={tabs} selected={selected} onSelect={handleTabChange}>
-          <div style={{ padding: "16px" }}>
-            <Text variant="bodyMd" fontWeight="medium">
-              Content for {tabs[selected].content}
-            </Text>
-          </div>
-        </Tabs>
-
         <Layout>
           {/* ---------- LEFT SIDE ---------- */}
           <Layout.Section variant="oneThird">
