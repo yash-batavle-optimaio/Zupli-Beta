@@ -855,3 +855,6 @@
 {"event":"timer.fetch.received","level":"info","message":"Fetch cart timer request received","requestId":"1a68da09-2598-4d10-9179-08484ffdf2d0","timestamp":"2026-01-29T12:49:17.134Z"}
 {"event":"timer.fetch.start","level":"info","message":"Fetching cart timer metafield","requestId":"1a68da09-2598-4d10-9179-08484ffdf2d0","shop":"basic-optimaio-cart.myshopify.com","timestamp":"2026-01-29T12:49:17.264Z"}
 {"event":"timer.fetch.success","level":"info","message":"Cart timer fetched successfully","requestId":"1a68da09-2598-4d10-9179-08484ffdf2d0","shop":"basic-optimaio-cart.myshopify.com","timestamp":"2026-01-29T12:49:18.006Z"}
+{"event":"orders.flush.cron.triggered","level":"info","message":"Hourly order flush cron triggered","requestId":"33c69108-baf8-4a18-823a-d9851965f1c1","timestamp":"2026-01-29T13:00:00.028Z"}
+{"event":"orders.flush.scan.started","level":"info","message":"Order flush scan started","requestId":"33c69108-baf8-4a18-823a-d9851965f1c1","timestamp":"2026-01-29T13:00:00.029Z"}
+{"event":"orders.flush.queue.empty","level":"info","message":"No order queues found","requestId":"33c69108-baf8-4a18-823a-d9851965f1c1","timestamp":"2026-01-29T13:00:00.038Z"}

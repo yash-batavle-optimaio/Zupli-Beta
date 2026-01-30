@@ -8,6 +8,7 @@ import {
   Text,
   Button,
   Icon,
+  Modal,
 } from "@shopify/polaris";
 
 import { useLoaderData } from "@remix-run/react";
@@ -134,6 +135,8 @@ export default function ResourceDetailsLayout() {
   const [saveBarOpen, setSaveBarOpen] = useState(false);
   const [initialSnapshot, setInitialSnapshot] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [previewTheme, setPreviewTheme] = useState(null);
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   useEffect(() => {
     if (!initialSnapshot) return;
@@ -256,6 +259,66 @@ export default function ResourceDetailsLayout() {
     window.location.reload();
   };
 
+  const ColorThemes = [
+    {
+      id: "theme0",
+      name: "Sand Dunes Light green",
+      src: "/theme-icons/thumbnail/sand-dunes-light-green.svg",
+      previewSrc: "/theme-icons/preview/sand-dunes-light-green.png",
+    },
+    {
+      id: "theme1",
+      name: "Oh So Minimal Light",
+      src: "/theme-icons/thumbnail/oh-so-minimal-light.svg",
+      previewSrc: "/theme-icons/preview/oh-so-minimal-light.png",
+    },
+    {
+      id: "theme2",
+      name: "Fresh Gradient light",
+      src: "/theme-icons/thumbnail/fresh-gradient-light.svg",
+      previewSrc: "/theme-icons/preview/fresh-gradient-light.png",
+    },
+    {
+      id: "theme3",
+      name: "Aqua Light",
+      src: "/theme-icons/thumbnail/aqua-light.svg",
+      previewSrc: "/theme-icons/preview/aqua-light.png",
+    },
+    {
+      id: "theme4",
+      name: "Golden Hour Light",
+      src: "/theme-icons/thumbnail/golden-hour-light.svg",
+      previewSrc: "/theme-icons/preview/golden-hour-light.png",
+    },
+    {
+      id: "theme5",
+      name: "Sharp Edge Light",
+      src: "/theme-icons/thumbnail/sharp-edge-light.svg",
+      previewSrc: "/theme-icons/preview/sharp-edge-light.png",
+    },
+    {
+      id: "theme6",
+      name: "Poseidon Dark",
+      src: "/theme-icons/thumbnail/poseidon-dark.svg",
+      previewSrc: "/theme-icons/preview/poseidon-dark.png",
+    },
+    {
+      id: "theme7",
+      name: "Sand Dunes Light",
+      src: "/theme-icons/thumbnail/sand-dunes-light.svg",
+      previewSrc: "/theme-icons/preview/sand-dunes-light.png",
+    },
+    {
+      id: "theme8",
+      name: "Bubblegum Light",
+      src: "/theme-icons/thumbnail/bubblegum-light.svg",
+      previewSrc: "/theme-icons/preview/bubblegum-light.png",
+    },
+  ];
+
+  const selectedThemeName =
+    ColorThemes.find((t) => t.id === selectedTheme)?.name || selectedTheme;
+
   return (
     <>
       <Page
@@ -276,7 +339,7 @@ export default function ResourceDetailsLayout() {
           <InlineGrid columns={{ xs: 1, md: "2fr 1fr" }} gap="400">
             {/* LEFT SECTION */}
             <BlockStack gap="400">
-              {/* Select Theme */}
+              {/* Announcement Bar */}
               <Colabssiblecom
                 title="Announcement Bar"
                 description="Display announcement messages at the top of the cart."
@@ -319,12 +382,19 @@ export default function ResourceDetailsLayout() {
                 description="Customize the cart widget appearance."
                 icon={ThemeEditIcon}
               >
-                <ThemeGrid
-                  selectedTheme={selectedTheme}
-                  onSelect={(id) => {
-                    setSelectedTheme(id);
-                  }}
-                />
+                <BlockStack gap="300">
+                  <Button
+                    icon={PaintBrushFlatIcon}
+                    onClick={() => setThemeModalOpen(true)}
+                  >
+                    Choose theme
+                  </Button>
+
+                  {/* Optional: show currently selected theme */}
+                  <Text tone="subdued">
+                    Selected theme: <strong>{selectedThemeName}</strong>
+                  </Text>
+                </BlockStack>
               </Colabssiblecom>
 
               {/* Banner + Colors */}
@@ -382,6 +452,33 @@ export default function ResourceDetailsLayout() {
                 />
               </Colabssiblecom>
             </BlockStack>
+
+            <Modal
+              open={themeModalOpen}
+              onClose={() => setThemeModalOpen(false)}
+              title="Select a Theme"
+              fullScreen
+              primaryAction={{
+                content: "Apply theme",
+                onAction: () => {
+                  setSelectedTheme(previewTheme.id);
+                  setThemeModalOpen(false);
+                },
+              }}
+              secondaryActions={[
+                {
+                  content: "Cancel",
+                  onAction: () => setThemeModalOpen(false),
+                },
+              ]}
+            >
+              <Modal.Section>
+                <ThemeGrid
+                  selectedTheme={selectedTheme}
+                  onPreviewChange={setPreviewTheme}
+                />
+              </Modal.Section>
+            </Modal>
 
             {/* RIGHT SECTION */}
             <BlockStack>

@@ -1,149 +1,131 @@
 import { useState, useEffect } from "react";
-import { Box, InlineGrid, Text, Modal } from "@shopify/polaris";
+import {
+  Box,
+  InlineGrid,
+  BlockStack,
+  InlineStack,
+  Text,
+  Scrollable,
+  Card,
+  Divider,
+} from "@shopify/polaris";
 
 const ColorThemes = [
   {
-    id: "theme1",
-    name: "Vibrant Neon",
-    src: "/theme-icons/VibrantNeon.svg",
+    id: "theme0",
+    name: "Sand Dunes Light green",
+    src: "/theme-icons/thumbnail/sand-dunes-light-green.svg",
+    previewSrc: "/theme-icons/preview/sand-dunes-light-green.png",
   },
-
+  {
+    id: "theme1",
+    name: "Oh So Minimal Light",
+    src: "/theme-icons/thumbnail/oh-so-minimal-light.svg",
+    previewSrc: "/theme-icons/preview/oh-so-minimal-light.png",
+  },
   {
     id: "theme2",
-    name: "Ocean Breeze",
-    src: "/theme-icons/OceanBreeze.svg",
+    name: "Fresh Gradient light",
+    src: "/theme-icons/thumbnail/fresh-gradient-light.svg",
+    previewSrc: "/theme-icons/preview/fresh-gradient-light.png",
   },
-
   {
     id: "theme3",
-    name: "Sunset Heat",
-    src: "/theme-icons/SunsetHeat.svg",
+    name: "Aqua Light",
+    src: "/theme-icons/thumbnail/aqua-light.svg",
+    previewSrc: "/theme-icons/preview/aqua-light.png",
   },
-
   {
     id: "theme4",
-    name: "Cotton Candy",
-    src: "/theme-icons/CottonCandy.svg",
+    name: "Golden Hour Light",
+    src: "/theme-icons/thumbnail/golden-hour-light.svg",
+    previewSrc: "/theme-icons/preview/golden-hour-light.png",
   },
-
   {
     id: "theme5",
-    name: "Forest Calm",
-    src: "/theme-icons/ForestCalm.svg",
+    name: "Sharp Edge Light",
+    src: "/theme-icons/thumbnail/sharp-edge-light.svg",
+    previewSrc: "/theme-icons/preview/sharp-edge-light.png",
   },
-
   {
     id: "theme6",
-    name: "Royal Luxe",
-    src: "/theme-icons/RoyalLuxe.svg",
+    name: "Poseidon Dark",
+    src: "/theme-icons/thumbnail/poseidon-dark.svg",
+    previewSrc: "/theme-icons/preview/poseidon-dark.png",
   },
-
   {
     id: "theme7",
-    name: "Solar Burst",
-    src: "/theme-icons/SolarBurst.svg",
+    name: "Sand Dunes Light",
+    src: "/theme-icons/thumbnail/sand-dunes-light.svg",
+    previewSrc: "/theme-icons/preview/sand-dunes-light.png",
   },
-
   {
     id: "theme8",
-    name: "Galaxy Pulse",
-    src: "/theme-icons/GalaxyPulse.svg",
+    name: "Bubblegum Light",
+    src: "/theme-icons/thumbnail/bubblegum-light.svg",
+    previewSrc: "/theme-icons/preview/bubblegum-light.png",
   },
 ];
 
-export default function ThemeGrid({ onSelect, selectedTheme }) {
+export default function ThemeGrid({ selectedTheme, onPreviewChange }) {
   const [previewTheme, setPreviewTheme] = useState(null);
-  const [open, setOpen] = useState(false);
-
-  // The theme currently applied
-  const appliedTheme = ColorThemes.find((t) => t.id === selectedTheme);
-
-  const handleSelect = (theme) => {
-    setPreviewTheme(theme);
-    setOpen(true);
-  };
-
+  // Sync preview when modal opens or selected theme changes
+  useEffect(() => {
+    const applied = ColorThemes.find((t) => t.id === selectedTheme);
+    setPreviewTheme(applied);
+    onPreviewChange?.(applied);
+  }, [selectedTheme]);
   return (
-    <>
-      <InlineGrid columns={{ xs: 1, sm: 2, md: 3 }} gap="300">
-        {ColorThemes.map((theme) => {
-          const isSelected = appliedTheme?.id === theme.id;
+    <InlineGrid columns="1.75fr 2fr" gap="300">
+      {/* LEFT: Theme list */}
 
-          return (
-            <Box
-              key={theme.id}
-              onClick={() => handleSelect(theme)}
-              padding="400" // ⬅ add more padding so SVG does not touch border
-              background={isSelected ? "bg-fill-tertiary" : "bg-surface"}
-              borderWidth="1"
-              borderRadius="300"
-              borderColor="border"
-              style={{
-                cursor: "pointer",
-                transition: "0.2s",
-                display: "flex",
-                alignItems: "center",
-                gap: "16px", // optional: more space between icon and text
-                boxShadow: isSelected
-                  ? "0 0 0 2px #18181a inset, 0 0 0 4px rgba(133, 134, 141, 0.15)"
-                  : "none",
-              }}
-            >
-              <Box padding="100">
-                {/* shrink from 70px */}
-                <img
-                  src={theme.src}
-                  alt={theme.name}
-                  width={70}
-                  height={70}
-                  style={{ display: "block" }}
-                />
-              </Box>
-              <Text variant="headingMd">{theme.name}</Text>
-            </Box>
-          );
-        })}
-      </InlineGrid>
+      <Card>
+        <Scrollable shadow style={{ height: 400 }} focusable>
+          <BlockStack gap="200">
+            {ColorThemes.map((theme, index) => {
+              const isSelected = previewTheme?.id === theme.id;
+              return (
+                <BlockStack key={theme.id} gap="100">
+                  <Box
+                    key={theme.id}
+                    padding="300"
+                    borderWidth="1"
+                    borderRadius="200"
+                    background={isSelected ? "bg-fill-tertiary" : "bg-surface"}
+                    onClick={() => {
+                      setPreviewTheme(theme);
+                      onPreviewChange(theme);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <InlineStack gap="300" blockAlign="center">
+                      <img src={theme.src} width={60} height={60} />
+                      <Text fontWeight="medium">{theme.name}</Text>
+                    </InlineStack>
+                  </Box>
+                  {/* Divider between items (not after last one) */}
+                  {index !== ColorThemes.length - 1 && <Divider />}
+                </BlockStack>
+              );
+            })}
+          </BlockStack>
+        </Scrollable>
+      </Card>
 
-      {previewTheme && (
-        <Modal
-          open={open}
-          onClose={() => {
-            setOpen(false);
-            setPreviewTheme(null);
-          }}
-          title={previewTheme.name}
-          primaryAction={{
-            content: "Apply Theme",
-            onAction: () => {
-              onSelect(previewTheme.id);
-              setOpen(false);
-              setPreviewTheme(null);
-            },
-          }}
-        >
-          <Modal.Section>
-            <Box
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                padding: "20px",
-              }}
-            >
-              <img
-                src={previewTheme.src}
-                alt={previewTheme.name}
-                width={140}
-                height={140}
-                style={{ display: "block" }}
-              />
-            </Box>
-            <Text alignment="center" color="subdued">
-              Preview of the selected theme.
+      {/* RIGHT: Preview */}
+      <Card>
+        {previewTheme ? (
+          <BlockStack gap="300" inlineAlign="center">
+            <Text variant="headingMd">{previewTheme.name}</Text>
+            <img src={previewTheme.previewSrc} width={250} height={350} />
+            <Text tone="subdued" alignment="center">
+              Preview only. Click “Apply theme” to confirm.
             </Text>
-          </Modal.Section>
-        </Modal>
-      )}
-    </>
+          </BlockStack>
+        ) : (
+          <Text tone="subdued">Select a theme to preview</Text>
+        )}
+      </Card>
+    </InlineGrid>
   );
 }
