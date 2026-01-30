@@ -252,7 +252,6 @@ export default function ResourceDetailsLayout() {
 
   // Discard does not need API
   const handleDiscard = () => {
-    if (!window.confirm("Discard changes?")) return;
     window.location.reload();
   };
 

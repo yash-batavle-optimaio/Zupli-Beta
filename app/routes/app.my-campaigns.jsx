@@ -490,8 +490,8 @@ export default function CampaignIndexTable() {
   // DISCARD CAMPAIGN
   // ------------------------------------------------------------------
   const handleDiscardCampaign = () => {
-    const confirmDiscard = window.confirm("Discard changes?");
-    if (!confirmDiscard) return;
+    // const confirmDiscard = window.confirm("Discard changes?");
+    // if (!confirmDiscard) return;
 
     if (!initialSnapshot) return;
 
@@ -1175,22 +1175,11 @@ export default function CampaignIndexTable() {
             <Button
               icon={ArrowLeftIcon}
               plain
-              onClick={() => {
-                if (shopify?.saveBar) {
-                  shopify.saveBar.hide("campaign-save-bar");
-                }
-                setSaveBarOpen(false);
-                setEditingCampaign(null);
-              }}
+              onClick={() => window.history.back()}
             />
             <Text variant="headingLg" as="h2">
               Edit Campaign
             </Text>
-            {status === "draft" ? (
-              <Badge tone="info">Draft</Badge>
-            ) : (
-              <Badge tone="success">Active</Badge>
-            )}
           </InlineStack>
         }
       >

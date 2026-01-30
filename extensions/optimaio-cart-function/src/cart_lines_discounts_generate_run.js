@@ -20,70 +20,76 @@ export function cartLinesDiscountsGenerateRun(input) {
   if (!input.cart.lines.length) return { operations: [] };
 
   const hasOrder = input.discount.discountClasses.includes(DiscountClass.Order);
-  const hasProduct = input.discount.discountClasses.includes(DiscountClass.Product);
+  const hasProduct = input.discount.discountClasses.includes(
+    DiscountClass.Product,
+  );
 
   const ops = [];
 
-
-   /* =========================================================
+  /* =========================================================
      🟣 NEW FUNCTIONALITY — campaign-based discounts
      ========================================================= */
   const campaignData = JSON.parse(input.shop?.metafield?.value || "{}");
-let campaigns = (campaignData.campaigns || []).filter((c) => c.status === "active");
+  let campaigns = (campaignData.campaigns || []).filter(
+    (c) => c.status === "active",
+  );
 
-// ✅ Apply priority sorting and pick only the highest priority campaign
-if (campaigns.length > 1) {
-  campaigns = campaigns
-    .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999))
-    .slice(0, 1); // keep only top one
-}
+  // ✅ Apply priority sorting and pick only the highest priority campaign
+  if (campaigns.length > 1) {
+    campaigns = campaigns
+      .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999))
+      .slice(0, 1); // keep only top one
+  }
 
-if (campaigns.length) {
-    const hasOrder = input.discount.discountClasses.includes(DiscountClass.Order);
-    const hasProduct = input.discount.discountClasses.includes(DiscountClass.Product);
+  if (campaigns.length) {
+    const hasOrder = input.discount.discountClasses.includes(
+      DiscountClass.Order,
+    );
+    const hasProduct = input.discount.discountClasses.includes(
+      DiscountClass.Product,
+    );
 
     // Compute totals (excluding gifts)
     const cartSubtotal = input.cart.lines.reduce((sum, line) => {
       const isGift = line.attributes?.some(
         (a) =>
           (a.key === "_isFreeGift" && a.value === "true") ||
-          (a.key === "isFreeGift" && a.value === "true")
+          (a.key === "isFreeGift" && a.value === "true"),
       );
       return isGift
         ? sum
-        : sum + parseFloat(line.cost?.amountPerQuantity?.amount || 0) * (line.quantity ?? 1);
+        : sum +
+            parseFloat(line.cost?.amountPerQuantity?.amount || 0) *
+              (line.quantity ?? 1);
     }, 0);
 
     const totalQty = input.cart.lines.reduce((sum, line) => {
       const isGift = line.attributes?.some(
         (a) =>
           (a.key === "_isFreeGift" && a.value === "true") ||
-          (a.key === "isFreeGift" && a.value === "true")
+          (a.key === "isFreeGift" && a.value === "true"),
       );
       return isGift ? sum : sum + (line.quantity ?? 1);
     }, 0);
 
     campaigns.forEach((campaign) => {
       const { trackType, campaignName, goals, activeDates } = campaign;
-  if (!goals?.length) return;
+      if (!goals?.length) return;
 
-  // --- DATE FILTER: only apply active campaigns ---
-  const now = new Date(input.shop?.localTime?.date || new Date());
-  const startDate = activeDates?.start?.date
-    ? new Date(activeDates.start.date)
-    : null;
-  const endDate = activeDates?.hasEndDate
-    ? new Date(activeDates.end?.date)
-    : null;
+      // --- DATE FILTER: only apply active campaigns ---
+      const now = new Date(input.shop?.localTime?.date || new Date());
+      const startDate = activeDates?.start?.date
+        ? new Date(activeDates.start.date)
+        : null;
+      const endDate = activeDates?.hasEndDate
+        ? new Date(activeDates.end?.date)
+        : null;
 
-  if (!startDate) return;
-  if (now < startDate) return; // campaign not started yet
-  if (endDate && now > endDate) return; // campaign expired
+      if (!startDate) return;
+      if (now < startDate) return; // campaign not started yet
+      if (endDate && now > endDate) return; // campaign expired
 
-
-
-
-            /* ---------------------------
+      /* ---------------------------
          2B. FREE PRODUCT GOALS (for cart or quantity based)
          --------------------------- */
       if (hasProduct) {
@@ -105,8 +111,8 @@ if (campaigns.length) {
                 l.attributes?.some(
                   (a) =>
                     (a.key === "isFreeGift" && a.value === "true") ||
-                    (a.key === "_isFreeGift" && a.value === "true")
-                )
+                    (a.key === "_isFreeGift" && a.value === "true"),
+                ),
             );
 
             // Only apply 100% discount to the existing gift line
@@ -144,7 +150,7 @@ if (campaigns.length) {
 
         if (eligibleGoals.length) {
           const best = eligibleGoals.reduce((max, g) =>
-            parseFloat(g.target) > parseFloat(max.target) ? g : max
+            parseFloat(g.target) > parseFloat(max.target) ? g : max,
           );
           const pct = parseFloat(best.discountValue);
           ops.push({
@@ -185,8 +191,8 @@ if (campaigns.length) {
                 l.attributes?.some(
                   (a) =>
                     (a.key === "_isFreeGift" && a.value === "true") ||
-                    (a.key === "isFreeGift" && a.value === "true")
-                )
+                    (a.key === "isFreeGift" && a.value === "true"),
+                ),
             );
 
             if (giftLine) {
@@ -210,7 +216,6 @@ if (campaigns.length) {
       }
     });
   }
-
 
   /* =========================================================
      ✅ Return combined operations

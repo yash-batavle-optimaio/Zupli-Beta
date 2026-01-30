@@ -229,15 +229,11 @@ export default function Upsell() {
             <Button
               icon={ArrowLeftIcon}
               plain
-              onClick={() => {
-                if (saveBarOpen) {
-                  shopify?.saveBar?.show("upsell-save-bar");
-                  return;
-                }
-                window.history.back();
-              }}
+              onClick={() => window.history.back()}
             />
-            <Text variant="headingLg">Upsell</Text>
+            <Text variant="headingLg" as="h2">
+              Upsell
+            </Text>
           </InlineStack>
         }
       >
