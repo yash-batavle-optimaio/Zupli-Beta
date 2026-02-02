@@ -12,6 +12,7 @@ node_modules
 database.sqlite
 
 ./logs
+/logs
 
 .env
 .env.*
