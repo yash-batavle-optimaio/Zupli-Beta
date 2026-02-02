@@ -1,7 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  Card,
-  Text,
   Box,
   Checkbox,
   TextField,
@@ -80,65 +78,18 @@ export default function ActiveDatesPicker({ value, onChange }) {
     setHydrated(true); // ✅ mark ready
   }, [value]);
 
-  /** Hydrate and initialize from metafield (stable + deep sync) */
-  const [initialized, setInitialized] = useState(false);
-
-  useEffect(() => {
-    if (!value) return; // wait until metafield data exists
-    const sd = parseStoredDate(value.start?.date);
-    const ed = parseStoredDate(value.end?.date);
-    const hasEnd = Boolean(value.hasEndDate);
-
-    // Avoid re-initializing if we've already hydrated the same data
-    const currentStart = formatLocalYMD(selectedStart?.start);
-    const incomingStart = formatLocalYMD(sd);
-    const currentEnd = formatLocalYMD(selectedEnd?.start);
-    const incomingEnd = formatLocalYMD(ed);
-
-    const isSameData =
-      currentStart === incomingStart &&
-      currentEnd === incomingEnd &&
-      hasEnd === hasEndDate;
-
-    if (initialized && isSameData) return;
-
-    if (sd) {
-      setSelectedStart({ start: sd, end: sd });
-      setDate({ month: sd.getMonth(), year: sd.getFullYear() });
-    } else {
-      // No metafield date — init with today
-      const now = new Date();
-      setSelectedStart({ start: now, end: now });
-      onChange?.({
-        start: { date: formatLocalYMD(now) },
-        end: { date: null },
-        hasEndDate: false,
-      });
-      setInitialized(true);
-      return;
-    }
-
-    if (hasEnd && ed) {
-      setSelectedEnd({ start: ed, end: ed });
-      setHasEndDate(true);
-    } else {
-      setSelectedEnd(null);
-      setHasEndDate(false);
-    }
-
-    setInitialized(true);
-  }, [value]);
-
   /** Emit to parent */
   const emitChange = useCallback(
     (startObj, endFlag, endObj) => {
+      if (!hydrated) return; // 🛑 block initial save bar
+
       onChange?.({
         start: { date: startObj ? formatLocalYMD(startObj) : null },
         end: endFlag ? { date: endObj ? formatLocalYMD(endObj) : null } : null,
         hasEndDate: endFlag,
       });
     },
-    [onChange],
+    [onChange, hydrated],
   );
 
   const handleMonthChange = useCallback(
