@@ -18,7 +18,6 @@ import {
   Layout,
   Divider,
   Collapsible,
-  Link,
   Banner,
 } from "@shopify/polaris";
 import { useEffect, useState, useCallback } from "react";
