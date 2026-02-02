@@ -236,8 +236,10 @@ export default function AppIndexPage() {
 
                               // ⏳ Wait shortly so user can see toast (optional)
                               setTimeout(() => {
-                                navigate("/app/my-campaigns");
-                              }, 800);
+                                navigate(
+                                  `/app/my-campaigns?edit=${data.campaign.id}`,
+                                );
+                              }, 300);
 
                               return;
                             } else {

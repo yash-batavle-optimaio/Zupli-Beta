@@ -20,7 +20,7 @@ import {
   Collapsible,
   Banner,
 } from "@shopify/polaris";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { authenticate } from "../shopify.server";
 import {
   DeleteIcon,
@@ -40,7 +40,8 @@ import Colabssiblecom from "./components/Colabssiblecom";
 import ActiveDatesPicker from "./components/ActiveDatesPicker";
 import ContentEditor from "./components/ContentEditor";
 import PreviewCard from "./components/PreviewCard";
-import { useRef } from "react";
+import { useSearchParams } from "@remix-run/react";
+import { getInitialContentByGoal } from "./utils/content/initialGoalContent";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -51,6 +52,7 @@ export default function CampaignIndexTable() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCampaign, setEditingCampaign] = useState(null);
+  const [searchParams] = useSearchParams();
 
   const goalRefs = useRef({});
   const lastAddedGoalId = useRef(null);
@@ -266,6 +268,17 @@ export default function CampaignIndexTable() {
   };
 
   // LOAD CAMPAIGNS FROM METAFIELD
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || !campaigns.length) return;
+
+    const campaignToEdit = campaigns.find((c) => c.id === editId);
+
+    if (campaignToEdit) {
+      setEditingCampaign(campaignToEdit);
+    }
+  }, [campaigns, searchParams]);
+
   // ------------------------------------------------------------------
   useEffect(() => {
     async function fetchCampaigns() {
@@ -550,6 +563,24 @@ export default function CampaignIndexTable() {
       newGoal.discountType = "percentage";
       newGoal.discountValue = 10;
     }
+
+    // 🔑 CONTENT DEFAULTS (ADD HERE)
+    const goalIndex = goals.length; // zero-based
+    const suffix =
+      goalIndex === 0
+        ? "st"
+        : goalIndex === 1
+          ? "nd"
+          : goalIndex === 2
+            ? "rd"
+            : "th";
+
+    const goalKey = `${goalIndex + 1}${suffix} goal`;
+
+    setContent((prev) => ({
+      ...prev,
+      [goalKey]: prev[goalKey] || getInitialContentByGoal(newGoal),
+    }));
 
     // free_shipping has no extra config initially
     lastAddedGoalId.current = goalId;
