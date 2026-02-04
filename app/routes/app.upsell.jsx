@@ -26,7 +26,7 @@ import ProductPickerModal from "./components/ProductPickerModal";
 const DEFAULT_SETTINGS = {
   normalUpsell: {
     enabled: false,
-    upsellType: "recommended",
+    upsellType: "related",
     displayLayout: "carousel",
     ctaAction: "add_to_cart",
     relatedProductCount: 4,

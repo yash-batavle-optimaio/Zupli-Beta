@@ -198,7 +198,7 @@ export default function UpsellProductSettings({
                   value={upsellType}
                   onChange={(value) => setUpsellType(value)}
                   options={[
-                    { label: "Recommended", value: "recommended" },
+                    { label: "Related", value: "related" },
                     { label: "Complementary", value: "complementary" },
                     { label: "Manual product", value: "manual" },
                   ]}
