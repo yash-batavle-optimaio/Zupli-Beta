@@ -125,15 +125,27 @@ export default function ResourceDetailsLayout() {
   -------------------------------------------------- */
   const normalizeDates = (dates) => ({
     start: {
-      date: dates.start.date ? dates.start.date.toString().split("T")[0] : null,
+      date: dates.start.date, // already YYYY-MM-DD
       time: dates.start.time,
     },
     end: {
-      date: dates.end.date ? dates.end.date.toString().split("T")[0] : null,
+      date: dates.end.date,
       time: dates.end.time,
     },
     hasEndDate: dates.hasEndDate,
   });
+
+  // const normalizeDates = (dates) => ({
+  //   start: {
+  //     date: dates.start.date ? dates.start.date.toString().split("T")[0] : null,
+  //     time: dates.start.time,
+  //   },
+  //   end: {
+  //     date: dates.end.date ? dates.end.date.toString().split("T")[0] : null,
+  //     time: dates.end.time,
+  //   },
+  //   hasEndDate: dates.hasEndDate,
+  // });
 
   /* --------------------------------------------------
      SAVE

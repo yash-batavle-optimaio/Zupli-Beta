@@ -1,24 +1,33 @@
 <svg viewBox="0 0 140 140" style="width:70px; height:70px;" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M70 70 m -65 0 a 65 65 0 0 1 130 0 a 65 65 0 0 1 -130 0"
-          fill="none"
-          stroke="#FFA600"
-          strokeWidth="10"
-          strokeDasharray="204.2"
-          strokeDashoffset="204.2"
-        />
-        <path
-          d="M70 70 m -65 0 a 65 65 0 0 1 130 0 a 65 65 0 0 1 -130 0"
-          fill="none"
-          stroke="#FFE100"
-          strokeWidth="10"
-          strokeDasharray="204.2"
-          strokeDashoffset="0"
-        />
-        <g transform="translate(70,70)">
-          <path d="M0 0 L0 -60 A60 60 0 0 1 60 0 Z" fill="#FFD257" />
-          <path d="M0 0 L60 0 A60 60 0 0 1 0 60 Z" fill="#FFB200" />
-          <path d="M0 0 L0 60 A60 60 0 0 1 -60 0 Z" fill="#FF7F00" />
-          <path d="M0 0 L-60 0 A60 60 0 0 1 0 -60 Z" fill="#FFE57F" />
-        </g>
-      </svg>
+  <!-- Inactive stroke -->
+  <path
+    d="M70 70 m -65 0 a 65 65 0 0 1 130 0 a 65 65 0 0 1 -130 0"
+    fill="none"
+    stroke="rgba(255,255,255,0.18)"
+    stroke-width="10"
+    stroke-dasharray="204.2"
+    stroke-dashoffset="204.2"
+  />
+
+  <!-- Active stroke -->
+  <path
+    d="M70 70 m -65 0 a 65 65 0 0 1 130 0 a 65 65 0 0 1 -130 0"
+    fill="none"
+    stroke="#22D3EE"
+    stroke-width="10"
+    stroke-dasharray="204.2"
+    stroke-dashoffset="0"
+  />
+
+  <!-- Center quadrants -->
+  <g transform="translate(70,70)">
+    <!-- Top -->
+    <path d="M0 0 L0 -60 A60 60 0 0 1 60 0 Z" fill="#0EA5E9" />
+    <!-- Right -->
+    <path d="M0 0 L60 0 A60 60 0 0 1 0 60 Z" fill="#0284C7" />
+    <!-- Bottom -->
+    <path d="M0 0 L0 60 A60 60 0 0 1 -60 0 Z" fill="#0369A1" />
+    <!-- Left -->
+    <path d="M0 0 L-60 0 A60 60 0 0 1 0 -60 Z" fill="#164E63" />
+  </g>
+</svg>

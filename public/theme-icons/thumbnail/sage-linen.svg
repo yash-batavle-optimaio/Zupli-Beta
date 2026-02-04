@@ -3,7 +3,7 @@
   <path
     d="M70 70 m -65 0 a 65 65 0 0 1 130 0 a 65 65 0 0 1 -130 0"
     fill="none"
-    stroke="#E6D5C1"
+    stroke="#E7E3DE"
     stroke-width="10"
     stroke-dasharray="204.2"
     stroke-dashoffset="204.2"
@@ -13,7 +13,7 @@
   <path
     d="M70 70 m -65 0 a 65 65 0 0 1 130 0 a 65 65 0 0 1 -130 0"
     fill="none"
-    stroke="#8B6B4A"
+    stroke="#5F7F6B"
     stroke-width="10"
     stroke-dasharray="204.2"
     stroke-dashoffset="0"
@@ -22,12 +22,12 @@
   <!-- Center quadrants -->
   <g transform="translate(70,70)">
     <!-- Top -->
-    <path d="M0 0 L0 -60 A60 60 0 0 1 60 0 Z" fill="#F3E8D8" />
+    <path d="M0 0 L0 -60 A60 60 0 0 1 60 0 Z" fill="#F6F4F1" />
     <!-- Right -->
-    <path d="M0 0 L60 0 A60 60 0 0 1 0 60 Z" fill="#E7D3B8" />
+    <path d="M0 0 L60 0 A60 60 0 0 1 0 60 Z" fill="#FFFFFF" />
     <!-- Bottom -->
-    <path d="M0 0 L0 60 A60 60 0 0 1 -60 0 Z" fill="#C9A77D" />
+    <path d="M0 0 L0 60 A60 60 0 0 1 -60 0 Z" fill="#EEF5F1" />
     <!-- Left -->
-    <path d="M0 0 L-60 0 A60 60 0 0 1 0 -60 Z" fill="#8B6B4A" />
+    <path d="M0 0 L-60 0 A60 60 0 0 1 0 -60 Z" fill="#E6EFE9" />
   </g>
 </svg>

@@ -148,7 +148,7 @@ export default function AppIndexPage() {
 
                     <Text tone="subdued" alignment="center">
                       Learn best practices to boost your average order value
-                      using CornerCart.
+                      using Zupli.
                     </Text>
 
                     <Button

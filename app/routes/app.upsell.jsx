@@ -31,6 +31,10 @@ const DEFAULT_SETTINGS = {
     ctaAction: "add_to_cart",
     relatedProductCount: 4,
     selectedVariants: [],
+
+    // ✅ ADD THESE
+    upsellTitle: "You might like also",
+    buttonText: "Add",
   },
   oneClickUpsell: {
     enabled: false,
@@ -39,6 +43,10 @@ const DEFAULT_SETTINGS = {
     upsellText: "",
     showProductImage: false,
     showInCartList: false,
+
+    // ✅ NEW
+    upsellTitle: "Frequently bought together",
+    buttonText: "Add to cart",
   },
 };
 
@@ -83,6 +91,15 @@ export default function Upsell() {
   const { settings } = useLoaderData();
   const shopify = useAppBridge();
 
+  // 🔒 Dev-only guard for embedded context
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.top === window.self) {
+      console.warn(
+        "Upsell page opened outside Shopify Admin iframe. OAuth loop will occur.",
+      );
+    }
+  }, []);
+
   const ITEMS_PER_PAGE = 5;
 
   /* ---------- NORMAL UPSELL ---------- */
@@ -101,7 +118,23 @@ export default function Upsell() {
     settings.normalUpsell.selectedVariants ?? [],
   );
 
+  const [upsellTitle, setUpsellTitle] = useState(
+    settings.normalUpsell.upsellTitle ?? "You might like also",
+  );
+
+  const [buttonText, setButtonText] = useState(
+    settings.normalUpsell.buttonText ?? "Add",
+  );
+
   /* ---------- ONE CLICK UPSELL ---------- */
+  const [oneClickUpsellTitle, setOneClickUpsellTitle] = useState(
+    settings.oneClickUpsell.upsellTitle ?? "Frequently bought together",
+  );
+
+  const [oneClickButtonText, setOneClickButtonText] = useState(
+    settings.oneClickUpsell.buttonText ?? "Add to cart",
+  );
+
   const [oneClickEnabled, setOneClickEnabled] = useState(
     settings.oneClickUpsell.enabled,
   );
@@ -141,6 +174,8 @@ export default function Upsell() {
         ctaAction,
         relatedProductCount,
         selectedVariants: selectedProducts,
+        upsellTitle,
+        buttonText,
       },
       oneClickUpsell: {
         enabled: oneClickEnabled,
@@ -149,6 +184,8 @@ export default function Upsell() {
         upsellText,
         showProductImage,
         showInCartList,
+        upsellTitle: oneClickUpsellTitle,
+        buttonText: oneClickButtonText,
       },
     }),
     [
@@ -158,12 +195,16 @@ export default function Upsell() {
       ctaAction,
       relatedProductCount,
       selectedProducts,
+      upsellTitle, // ✅ REQUIRED
+      buttonText, // ✅ REQUIRED
       oneClickEnabled,
       ctaType,
       oneClickProducts,
       upsellText,
       showProductImage,
       showInCartList,
+      oneClickUpsellTitle, // ✅
+      oneClickButtonText, // ✅
     ],
   );
 
@@ -254,6 +295,11 @@ export default function Upsell() {
                   setShowProductImage={setShowProductImage}
                   showInCartList={showInCartList}
                   setShowInCartList={setShowInCartList}
+                  /* ✅ NEW */
+                  upsellTitle={oneClickUpsellTitle}
+                  setUpsellTitle={setOneClickUpsellTitle}
+                  buttonText={oneClickButtonText}
+                  setButtonText={setOneClickButtonText}
                   oneClickPickerOpen={oneClickPickerOpen} // ✅ FIX
                   setOneClickPickerOpen={setOneClickPickerOpen} // ✅ FIX
                   variablePopoverOpen={variablePopoverOpen} // ✅ FIX
@@ -281,15 +327,18 @@ export default function Upsell() {
                   ITEMS_PER_PAGE={ITEMS_PER_PAGE}
                   pickerOpen={normalPickerOpen}
                   setPickerOpen={setNormalPickerOpen}
+                  /* ✅ ADD THESE */
+                  upsellTitle={upsellTitle}
+                  setUpsellTitle={setUpsellTitle}
+                  buttonText={buttonText}
+                  setButtonText={setButtonText}
                 />
               </Colabssiblecom>
             </BlockStack>
 
             <BlockStack>
               <Card>
-                <Box padding="400">
-                  <Select label="Status" />
-                </Box>
+                <Box padding="400">Preview Card</Box>
               </Card>
             </BlockStack>
           </InlineGrid>
