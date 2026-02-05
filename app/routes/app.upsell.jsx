@@ -20,7 +20,6 @@ import { SaveBar, useAppBridge } from "@shopify/app-bridge-react";
 import UpsellProductSettings from "./components/UpsellProductSettings.jsx";
 import OneClickUpsellSettings from "./components/OneClickUpsellSettings.jsx";
 import Colabssiblecom from "./components/Colabssiblecom";
-import ProductPickerModal from "./components/ProductPickerModal";
 
 /* ================= DEFAULT SETTINGS ================= */
 const DEFAULT_SETTINGS = {
@@ -67,6 +66,28 @@ export const loader = async ({ request }) => {
   const data = await res.json();
   let settings = DEFAULT_SETTINGS;
 
+  // 👇 ADD THIS BLOCK
+  const raw = data?.data?.shop?.metafield?.value;
+
+  // 👇 THEN PARSE
+  try {
+    const saved = JSON.parse(raw);
+
+    settings = {
+      normalUpsell: {
+        ...DEFAULT_SETTINGS.normalUpsell,
+        ...(saved.normalUpsell || {}),
+      },
+      oneClickUpsell: {
+        ...DEFAULT_SETTINGS.oneClickUpsell,
+        ...(saved.oneClickUpsell || {}),
+      },
+    };
+  } catch (err) {
+    console.error("Failed to parse upsell_settings metafield", err);
+    console.warn("Raw metafield value:", raw);
+  }
+
   if (data?.data?.shop?.metafield?.value) {
     try {
       const saved = JSON.parse(data.data.shop.metafield.value);
@@ -80,7 +101,10 @@ export const loader = async ({ request }) => {
           ...(saved.oneClickUpsell || {}),
         },
       };
-    } catch {}
+    } catch (err) {
+      console.error("Failed to parse upsell_settings metafield", err);
+      console.warn("Metafield value:", data.data.shop.metafield.value);
+    }
   }
 
   return json({ settings });
