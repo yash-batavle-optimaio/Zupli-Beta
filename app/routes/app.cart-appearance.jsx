@@ -179,6 +179,12 @@ export default function ResourceDetailsLayout() {
       // Reset banner + colors ONLY
       setBannerStyle({ bannerType: "solid" });
       setColors({});
+
+      // ❌ REMOVE cart widget color override
+      setCartWidget((prev) => {
+        const { widgetColor, ...rest } = prev;
+        return rest;
+      });
     }
   }, [selectedTheme]);
 
@@ -291,7 +297,22 @@ export default function ResourceDetailsLayout() {
 
   // Discard does not need API
   const handleDiscard = () => {
-    window.location.reload();
+    if (!initialSnapshot) return;
+
+    setSelectedTheme(initialSnapshot.theme);
+    setBannerStyle(initialSnapshot.bannerStyle);
+    setColors(initialSnapshot.colors);
+    setCustomCSS(initialSnapshot.customCSS);
+    setCustomJS(initialSnapshot.customJS);
+    setZIndex(initialSnapshot.zIndex);
+    setAnnouncementBar(initialSnapshot.announcementBar);
+    setCartFeatures(initialSnapshot.cartFeatures);
+    setCartWidget(initialSnapshot.cartWidget);
+    setCartTexts(initialSnapshot.cartTexts);
+
+    setSaveBarOpen(false);
+
+    shopify?.saveBar?.hide("cart-settings-save-bar");
   };
 
   const selectedThemeName =

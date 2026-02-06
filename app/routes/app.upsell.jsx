@@ -43,6 +43,8 @@ const DEFAULT_SETTINGS = {
     showProductImage: false,
     showInCartList: false,
 
+    // ✅ ADD THIS
+    allowVariantSelection: false,
     // ✅ NEW
     upsellTitle: "Frequently bought together",
     buttonText: "Add to cart",
@@ -175,6 +177,9 @@ export default function Upsell() {
   const [showInCartList, setShowInCartList] = useState(
     settings.oneClickUpsell.showInCartList,
   );
+  const [allowVariantSelection, setAllowVariantSelection] = useState(
+    settings.oneClickUpsell.allowVariantSelection ?? false,
+  );
 
   /* ---------- PICKERS ---------- */
   const [normalPickerOpen, setNormalPickerOpen] = useState(false);
@@ -210,6 +215,7 @@ export default function Upsell() {
         showInCartList,
         upsellTitle: oneClickUpsellTitle,
         buttonText: oneClickButtonText,
+        allowVariantSelection: allowVariantSelection,
       },
     }),
     [
@@ -227,6 +233,7 @@ export default function Upsell() {
       upsellText,
       showProductImage,
       showInCartList,
+      allowVariantSelection,
       oneClickUpsellTitle, // ✅
       oneClickButtonText, // ✅
     ],
@@ -281,8 +288,47 @@ export default function Upsell() {
       alt={variant.title}
       size="small"
     />,
-    `${variant.productTitle} — ${variant.title}`,
+    `${variant.productTitle} `,
   ]);
+
+  const handleDiscard = () => {
+    if (!initialSnapshot) return;
+
+    // NORMAL UPSELL
+    setShowUpsell(initialSnapshot.normalUpsell.enabled);
+    setUpsellType(initialSnapshot.normalUpsell.upsellType);
+    setDisplayLayout(initialSnapshot.normalUpsell.displayLayout);
+    setCtaAction(initialSnapshot.normalUpsell.ctaAction);
+    setRelatedProductCount(initialSnapshot.normalUpsell.relatedProductCount);
+    setSelectedProducts(initialSnapshot.normalUpsell.selectedVariants);
+    setUpsellTitle(initialSnapshot.normalUpsell.upsellTitle);
+    setButtonText(initialSnapshot.normalUpsell.buttonText);
+
+    // ONE CLICK UPSELL
+    setOneClickEnabled(initialSnapshot.oneClickUpsell.enabled);
+    setCtaType(initialSnapshot.oneClickUpsell.ctaType);
+    setOneClickProducts(
+      initialSnapshot.oneClickUpsell.product
+        ? [initialSnapshot.oneClickUpsell.product]
+        : [],
+    );
+    setUpsellText(initialSnapshot.oneClickUpsell.upsellText);
+    setShowProductImage(initialSnapshot.oneClickUpsell.showProductImage);
+    setShowInCartList(initialSnapshot.oneClickUpsell.showInCartList);
+    setOneClickUpsellTitle(initialSnapshot.oneClickUpsell.upsellTitle);
+    setOneClickButtonText(initialSnapshot.oneClickUpsell.buttonText);
+    // ✅ ADD THIS
+    setAllowVariantSelection(
+      initialSnapshot.oneClickUpsell.allowVariantSelection ?? false,
+    );
+
+    setSaveBarOpen(false);
+    shopify?.saveBar?.hide("upsell-save-bar");
+  };
+
+  const handleRemoveProduct = () => {
+    setOneClickProducts([]);
+  };
 
   /* ================= UI ================= */
   return (
@@ -328,6 +374,9 @@ export default function Upsell() {
                   setOneClickPickerOpen={setOneClickPickerOpen} // ✅ FIX
                   variablePopoverOpen={variablePopoverOpen} // ✅ FIX
                   setVariablePopoverOpen={setVariablePopoverOpen}
+                  allowVariantSelection={allowVariantSelection}
+                  setAllowVariantSelection={setAllowVariantSelection}
+                  handleRemoveProduct={handleRemoveProduct}
                 />
               </Colabssiblecom>
 
@@ -373,7 +422,7 @@ export default function Upsell() {
         <button variant="primary" onClick={handleSave}>
           Save
         </button>
-        <button onClick={() => window.location.reload()}>Discard</button>
+        <button onClick={handleDiscard}>Discard</button>
       </SaveBar>
     </>
   );

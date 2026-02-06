@@ -10,7 +10,8 @@ import {
   TextField,
 } from "@shopify/polaris";
 import HelpHeader from "./HelpHeader";
-import ProductPickerModal from "./ProductPickerModal";
+import ProductPickerModal from "./resourcePicker/ProductPickerModal";
+import { DeleteIcon } from "@shopify/polaris-icons";
 
 export default function OneClickUpsellSettings({
   enabled,
@@ -34,11 +35,16 @@ export default function OneClickUpsellSettings({
   setUpsellTitle,
   buttonText,
   setButtonText,
+  allowVariantSelection,
+  setAllowVariantSelection,
+  handleRemoveProduct,
 }) {
   const insertVariable = (variable) => {
     setUpsellText((prev) => `${prev} ${variable}`.trim());
     setVariablePopoverOpen(false);
   };
+
+  const product = oneClickProducts[0];
 
   return (
     <BlockStack gap={300}>
@@ -54,7 +60,7 @@ export default function OneClickUpsellSettings({
             background="bg-surface-secondary"
             borderRadius="200"
             padding="100"
-            inlineSize="fit-content"
+            width="fit-content"
           >
             <Button
               size="slim"
@@ -80,13 +86,13 @@ export default function OneClickUpsellSettings({
       </Box>
 
       {/* ⛔ HIDE EVERYTHING IF DISABLED */}
-      {!enabled && (
+      {/* {!enabled && (
         <Box>
           <Text tone="subdued">
             One-click upsell is disabled. Enable it to configure settings.
           </Text>
         </Box>
-      )}
+      )} */}
 
       {/* ✅ SHOW SETTINGS ONLY IF ENABLED */}
       {enabled && (
@@ -129,7 +135,7 @@ export default function OneClickUpsellSettings({
                 background="bg-surface-secondary"
                 borderRadius="200"
                 padding="100"
-                inlineSize="fit-content"
+                width="fit-content"
               >
                 <InlineStack gap="100">
                   <Button
@@ -159,41 +165,57 @@ export default function OneClickUpsellSettings({
               helpText="Only one product can be selected for one-click upsell."
             />
 
-            <Button onClick={() => setOneClickPickerOpen(true)}>
-              {oneClickProducts.length > 0
-                ? "Edit selected product"
-                : "Select product"}
-            </Button>
+            <ProductPickerModal
+              open={oneClickPickerOpen}
+              onClose={() => setOneClickPickerOpen(false)}
+              initialSelected={oneClickProducts}
+              singleSelect
+              isVariantSelectorOff={true}
+              onSelect={(variants) => {
+                setOneClickProducts(variants.slice(0, 1));
+                setOneClickPickerOpen(false);
+              }}
+            />
           </Box>
 
           {oneClickProducts.length > 0 && (
             <Box>
               <Card padding="200">
-                <InlineStack gap="300" blockAlign="center">
-                  <Thumbnail
-                    source={
-                      oneClickProducts[0].image?.url ||
-                      "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png"
-                    }
-                    alt={oneClickProducts[0].title}
-                    size="small"
+                <InlineStack
+                  gap="200"
+                  blockAlign="center"
+                  align="space-between"
+                  wrap={false}
+                >
+                  {/* Product column */}
+                  <InlineStack gap="200" blockAlign="center" wrap={false}>
+                    <Thumbnail
+                      source={
+                        product.image?.url ||
+                        "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png"
+                      }
+                      alt={product.image?.altText || product.title}
+                      size="small"
+                    />
+
+                    <Box minWidth="0">
+                      <Text as="span">
+                        {product.title || "Select a product"}
+                      </Text>
+                    </Box>
+                  </InlineStack>
+
+                  {/* Action column */}
+                  <Button
+                    plain
+                    destructive
+                    icon={DeleteIcon}
+                    onClick={() => setOneClickProducts([])}
                   />
-                  <Text>{oneClickProducts[0].productTitle}</Text>
                 </InlineStack>
               </Card>
             </Box>
           )}
-
-          <ProductPickerModal
-            open={oneClickPickerOpen}
-            onClose={() => setOneClickPickerOpen(false)}
-            initialSelected={oneClickProducts}
-            singleSelect
-            onSelect={(variants) => {
-              setOneClickProducts(variants.slice(0, 1));
-              setOneClickPickerOpen(false);
-            }}
-          />
 
           {/* UPSELL TEXT */}
           <Box>
@@ -267,7 +289,7 @@ export default function OneClickUpsellSettings({
                 background="bg-surface-secondary"
                 borderRadius="200"
                 padding="100"
-                inlineSize="fit-content"
+                width="fit-content"
               >
                 <Button
                   size="slim"
@@ -297,7 +319,7 @@ export default function OneClickUpsellSettings({
                 background="bg-surface-secondary"
                 borderRadius="200"
                 padding="100"
-                inlineSize="fit-content"
+                width="fit-content"
               >
                 <Button
                   size="slim"
@@ -311,6 +333,39 @@ export default function OneClickUpsellSettings({
                   size="slim"
                   variant={!showInCartList ? "primary" : "tertiary"}
                   onClick={() => setShowInCartList(false)}
+                >
+                  No
+                </Button>
+              </Box>
+            </InlineStack>
+          </Box>
+
+          {/* VARIANT SELECTION OPTION */}
+          <Box>
+            <HelpHeader
+              title="Allow customer to choose variant"
+              helpText="If disabled, the default variant will be added automatically."
+            />
+
+            <InlineStack gap="100">
+              <Box
+                background="bg-surface-secondary"
+                borderRadius="200"
+                padding="100"
+                width="fit-content"
+              >
+                <Button
+                  size="slim"
+                  variant={allowVariantSelection ? "primary" : "tertiary"}
+                  onClick={() => setAllowVariantSelection(true)}
+                >
+                  Yes
+                </Button>
+
+                <Button
+                  size="slim"
+                  variant={!allowVariantSelection ? "primary" : "tertiary"}
+                  onClick={() => setAllowVariantSelection(false)}
                 >
                   No
                 </Button>

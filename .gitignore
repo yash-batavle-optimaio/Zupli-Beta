@@ -18,8 +18,9 @@ database.sqlite
 .env.*
 
 
-
-
+# Ignore zip files
+*.zip
+*.ZIP
 
 /extensions/*/dist
 

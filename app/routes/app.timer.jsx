@@ -10,6 +10,7 @@ import {
   Button,
   Badge,
   Banner,
+  ButtonGroup,
 } from "@shopify/polaris";
 import { useState, useEffect, useMemo } from "react";
 import { SaveBar, useAppBridge } from "@shopify/app-bridge-react";
@@ -26,6 +27,7 @@ import {
 import ScarcityTimer from "./components/ScarcityTimer";
 import AfterTimerActions from "./components/AfterTimerActions";
 import TimerDateAndTime from "./components/TimerDateAndTime";
+import HelpHeader from "./components/HelpHeader";
 
 export default function ResourceDetailsLayout() {
   const shopify = useAppBridge();
@@ -37,8 +39,12 @@ export default function ResourceDetailsLayout() {
     timerMode: "duration",
     duration: { hours: "0", minutes: "5", seconds: "0" },
   });
+  const [previewMode, setPreviewMode] = useState("before");
+  // "before" | "after"
 
-  const [timerText, setTimerText] = useState("Hurry! Offer ends soon!");
+  const [timerText, setTimerText] = useState(
+    "Hurry! Offer ends soon! {{timeRemaining}}",
+  );
   const [expiredMessage, setExpiredMessage] = useState(
     "This offer has expired.",
   );
@@ -46,6 +52,7 @@ export default function ResourceDetailsLayout() {
   const [status, setStatus] = useState("draft");
 
   const todayISO = new Date().toISOString().split("T")[0];
+  const [showExpiredMessage, setShowExpiredMessage] = useState(true);
 
   const [activeDates, setActiveDates] = useState({
     start: { date: todayISO, time: "09:00 AM" },
@@ -63,11 +70,20 @@ export default function ResourceDetailsLayout() {
       timerConfig,
       timerText,
       expiredMessage,
+      showExpiredMessage,
       afterAction,
       status,
       activeDates,
     }),
-    [timerConfig, timerText, expiredMessage, afterAction, status, activeDates],
+    [
+      timerConfig,
+      timerText,
+      expiredMessage,
+      showExpiredMessage,
+      afterAction,
+      status,
+      activeDates,
+    ],
   );
 
   const isDirty =
@@ -88,6 +104,7 @@ export default function ResourceDetailsLayout() {
             timerConfig: data.data.timerConfig,
             timerText: data.data.timerText,
             expiredMessage: data.data.expiredMessage,
+            showExpiredMessage: data.data.showExpiredMessage ?? true,
             afterAction: data.data.afterAction,
             status: data.data.status,
             activeDates: data.data.activeDates,
@@ -96,21 +113,27 @@ export default function ResourceDetailsLayout() {
           setTimerConfig(snapshot.timerConfig);
           setTimerText(snapshot.timerText);
           setExpiredMessage(snapshot.expiredMessage);
+          setShowExpiredMessage(snapshot.showExpiredMessage);
           setAfterAction(snapshot.afterAction);
           setStatus(snapshot.status);
           setActiveDates(snapshot.activeDates);
 
-          setInitialSnapshot(snapshot);
+          setInitialSnapshot(JSON.parse(JSON.stringify(snapshot)));
         } else {
           // 🔑 IMPORTANT: baseline = defaults
-          setInitialSnapshot({
-            timerConfig,
-            timerText,
-            expiredMessage,
-            afterAction,
-            status,
-            activeDates,
-          });
+          setInitialSnapshot(
+            JSON.parse(
+              JSON.stringify({
+                timerConfig,
+                timerText,
+                expiredMessage,
+                showExpiredMessage,
+                afterAction,
+                status,
+                activeDates,
+              }),
+            ),
+          );
         }
       } catch (err) {
         console.error("🔥 LOAD ERROR:", err);
@@ -125,13 +148,16 @@ export default function ResourceDetailsLayout() {
   -------------------------------------------------- */
   const normalizeDates = (dates) => ({
     start: {
-      date: dates.start.date, // already YYYY-MM-DD
-      time: dates.start.time,
+      date: dates.start?.date ?? null,
+      time: dates.start?.time ?? null,
     },
-    end: {
-      date: dates.end.date,
-      time: dates.end.time,
-    },
+    end:
+      dates.hasEndDate && dates.end
+        ? {
+            date: dates.end.date ?? null,
+            time: dates.end.time ?? null,
+          }
+        : null,
     hasEndDate: dates.hasEndDate,
   });
 
@@ -167,7 +193,12 @@ export default function ResourceDetailsLayout() {
       const data = await res.json();
 
       if (data.ok) {
-        setInitialSnapshot(currentSnapshot);
+        const savedSnapshot = {
+          ...currentSnapshot,
+          activeDates: normalizeDates(activeDates),
+        };
+
+        setInitialSnapshot(JSON.parse(JSON.stringify(savedSnapshot)));
         shopify?.saveBar?.hide("timer-save-bar");
       } else {
         alert("❌ Failed to save");
@@ -186,6 +217,7 @@ export default function ResourceDetailsLayout() {
     setTimerConfig(initialSnapshot.timerConfig);
     setTimerText(initialSnapshot.timerText);
     setExpiredMessage(initialSnapshot.expiredMessage);
+    setShowExpiredMessage(initialSnapshot.showExpiredMessage);
     setAfterAction(initialSnapshot.afterAction);
     setStatus(initialSnapshot.status);
     setActiveDates(initialSnapshot.activeDates);
@@ -197,6 +229,24 @@ export default function ResourceDetailsLayout() {
     { label: "Active", value: "active" },
     { label: "Draft", value: "draft" },
   ];
+
+  useEffect(() => {
+    if (!showExpiredMessage && previewMode === "after") {
+      setPreviewMode("before");
+    }
+  }, [showExpiredMessage, previewMode]);
+
+  const getPreviewText = () => {
+    if (previewMode === "before") {
+      // Replace variable placeholders for preview only
+      return timerText.replace("{{timeRemaining}}", "xx:xx:xx");
+    }
+
+    if (!showExpiredMessage) {
+      return " "; // or return null
+    }
+    return expiredMessage;
+  };
 
   /* --------------------------------------------------
      UI
@@ -235,6 +285,7 @@ export default function ResourceDetailsLayout() {
                   title="Timer Message"
                   value={timerText}
                   onChange={setTimerText}
+                  enableVariables // 👈 HERE
                 />
               </Colabssiblecom>
 
@@ -242,11 +293,49 @@ export default function ResourceDetailsLayout() {
                 title="After timer expires"
                 icon={CircleRightIcon}
               >
-                <TimerMessageField
-                  title="Expired Message"
-                  value={expiredMessage}
-                  onChange={setExpiredMessage}
-                />
+                <Box>
+                  <HelpHeader
+                    title="Expired message visibility"
+                    helpText="Choose whether to show a message after the timer expires."
+                  />
+                  <InlineStack gap="100">
+                    <Box
+                      background="bg-surface-secondary"
+                      borderRadius="200"
+                      padding="100"
+                      width="fit-content"
+                    >
+                      <Button
+                        size="slim"
+                        variant={showExpiredMessage ? "primary" : "tertiary"}
+                        onClick={() => {
+                          if (!showExpiredMessage) setShowExpiredMessage(true);
+                        }}
+                      >
+                        Show
+                      </Button>
+
+                      <Button
+                        size="slim"
+                        variant={!showExpiredMessage ? "primary" : "tertiary"}
+                        onClick={() => {
+                          if (showExpiredMessage) setShowExpiredMessage(false);
+                        }}
+                      >
+                        Hide
+                      </Button>
+                    </Box>
+                  </InlineStack>
+                </Box>
+
+                {/* EXPIRED MESSAGE FIELD (CONDITIONAL) */}
+                {showExpiredMessage && (
+                  <TimerMessageField
+                    title="Expired Message"
+                    value={expiredMessage}
+                    onChange={setExpiredMessage}
+                  />
+                )}
 
                 <AfterTimerActions
                   title="After Timer Action"
@@ -263,7 +352,7 @@ export default function ResourceDetailsLayout() {
               </Colabssiblecom>
             </BlockStack>
 
-            <BlockStack>
+            <BlockStack gap={300}>
               {status == "active" ? (
                 <Card>
                   <Box padding="400">
@@ -287,6 +376,68 @@ export default function ResourceDetailsLayout() {
                   </Box>
                 </Banner>
               )}
+
+              <Card padding="0">
+                <Box padding="400">
+                  <Text variant="headingSm" fontWeight="bold">
+                    Preview
+                  </Text>
+                </Box>
+
+                <Box
+                  padding="400"
+                  background="bg-surface-secondary"
+                  borderBlockEndWidth="025"
+                  borderColor="border"
+                >
+                  <InlineStack align="center" wrap="false">
+                    <Text alignment="center" variant="bodyMd">
+                      {getPreviewText()}
+                    </Text>
+                  </InlineStack>
+                </Box>
+
+                <Box padding="200" paddingBlock="400">
+                  <InlineStack gap="100" align="center">
+                    <Box
+                      background="bg-surface-secondary"
+                      borderRadius="200"
+                      padding="100"
+                      width="fit-content"
+                    >
+                      <InlineStack gap="100">
+                        <Button
+                          size="slim"
+                          variant={
+                            previewMode === "before" ? "primary" : "tertiary"
+                          }
+                          onClick={() => {
+                            if (previewMode !== "before")
+                              setPreviewMode("before");
+                          }}
+                        >
+                          Before Timer Expires
+                        </Button>
+
+                        <Button
+                          size="slim"
+                          disabled={!showExpiredMessage} // ✅ DISABLE
+                          variant={
+                            previewMode === "after" ? "primary" : "tertiary"
+                          }
+                          onClick={() => {
+                            if (!showExpiredMessage) return; // 🛡 safety guard
+                            if (previewMode !== "after")
+                              setPreviewMode("after");
+                          }}
+                        >
+                          After Timer Expires
+                        </Button>
+                      </InlineStack>
+                    </Box>
+                  </InlineStack>
+                </Box>
+              </Card>
             </BlockStack>
           </InlineGrid>
         </Box>

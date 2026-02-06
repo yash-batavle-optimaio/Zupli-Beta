@@ -198,11 +198,11 @@ export default function AppIndexPage() {
             <Box paddingBlockEnd="600">
               <Card title={currentCampaign.title} sectioned>
                 <div style={{ textAlign: "center" }}>
-                  <img
+                  {/* <img
                     src={currentCampaign.image}
                     alt={currentCampaign.title}
                     style={{ width: "400px", height: "200px" }}
-                  />
+                  /> */}
 
                   <Box padding="400">
                     <BlockStack gap="400" align="center">

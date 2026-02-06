@@ -73,6 +73,19 @@ export default function DynamicCollapsible({
             </Text>
           )}
         </Box>
+
+        {/* Bottom-right collapse action */}
+        <Box paddingBlockStart="200">
+          <InlineStack align="end">
+            <Button
+              variant="plain"
+              icon={MinimizeIcon}
+              onClick={() => setOpen(false)}
+            >
+              Collapse
+            </Button>
+          </InlineStack>
+        </Box>
       </Collapsible>
     </Card>
   );

@@ -8,13 +8,19 @@ import {
   Button,
   InlineStack,
   DataTable,
-  Thumbnail,
   TextField,
   Banner,
-  Link,
+  Icon,
 } from "@shopify/polaris";
 import HelpHeader from "./HelpHeader";
-import ProductPickerModal from "./ProductPickerModal";
+import ProductPickerModal from "./resourcePicker/ProductPickerModal";
+import {
+  DeleteIcon,
+  PlusIcon,
+  EditIcon,
+  CheckIcon,
+  MinusIcon,
+} from "@shopify/polaris-icons";
 
 export default function UpsellProductSettings({
   showUpsell,
@@ -114,7 +120,7 @@ export default function UpsellProductSettings({
             setup the product relations in{" "}
             <a
               target="_blank"
-              class="Polaris-Link"
+              className="Polaris-Link"
               href="https://apps.shopify.com/search-and-discovery"
               rel="noopener noreferrer"
               data-polaris-unstyled="true"
@@ -210,17 +216,17 @@ export default function UpsellProductSettings({
             {upsellType === "manual" && (
               <Box paddingBlockStart="300">
                 <InlineStack gap="200" align="start" blockAlign="center">
-                  <Button onClick={() => setPickerOpen(true)}>
-                    {selectedProducts.length > 0
-                      ? "Edit selected products"
-                      : "Select products"}
-                  </Button>
-
-                  {selectedProducts.length > 0 && (
-                    <Text tone="subdued">
-                      {selectedProducts.length} variant(s) selected
-                    </Text>
-                  )}
+                  {/* Product Picker Modal */}
+                  <ProductPickerModal
+                    open={pickerOpen}
+                    onClose={() => setPickerOpen(false)}
+                    initialSelected={selectedProducts}
+                    isVariantSelectorOff={false}
+                    onSelect={(selectedVariants) => {
+                      setSelectedProducts(selectedVariants);
+                      setPickerOpen(false);
+                    }}
+                  />
                 </InlineStack>
               </Box>
             )}
@@ -228,10 +234,10 @@ export default function UpsellProductSettings({
             {/* Selected Products Table */}
             {upsellType === "manual" && selectedProducts.length > 0 && (
               <Box paddingBlockStart="400">
-                <Card>
+                <Card padding="0">
                   <DataTable
                     columnContentTypes={["text", "text"]}
-                    headings={["Image", "Product"]}
+                    headings={[]}
                     rows={rows}
                     pagination={{
                       hasPrevious: page > 0,
@@ -240,21 +246,21 @@ export default function UpsellProductSettings({
                       onPrevious: () => setPage((p) => p - 1),
                       onNext: () => setPage((p) => p + 1),
                     }}
+                    // footerContent={
+                    //   <Button
+                    //     variant="tertiary"
+                    //     size="slim"
+                    //     fullWidth
+                    //     icon={<Icon source={PlusIcon} />}
+                    //     onClick={() => setPickerOpen(true)}
+                    //   >
+                    //     Add more products
+                    //   </Button>
+                    // }
                   />
                 </Card>
               </Box>
             )}
-
-            {/* Product Picker Modal */}
-            <ProductPickerModal
-              open={pickerOpen}
-              onClose={() => setPickerOpen(false)}
-              initialSelected={selectedProducts}
-              onSelect={(selectedVariants) => {
-                setSelectedProducts(selectedVariants);
-                setPickerOpen(false);
-              }}
-            />
           </Card>
         </BlockStack>
       )}

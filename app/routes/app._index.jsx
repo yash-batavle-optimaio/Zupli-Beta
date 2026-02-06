@@ -12,6 +12,7 @@ import {
 import { authenticate } from "../shopify.server";
 import { useNavigate } from "@remix-run/react";
 import { useState, useEffect } from "react";
+import { XIcon } from "@shopify/polaris-icons";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -19,9 +20,35 @@ export const loader = async ({ request }) => {
 };
 
 export default function AppIndexPage() {
+  const feedbackConfig = {
+    title: "How do you like the app so far?",
+    description:
+      "Did the app meet your expectations? Was it easy to setup? Was the support team helpful?",
+    illustration: {
+      src: "home-page/home-review.svg",
+      alt: "Feedback illustration",
+      height: 90,
+    },
+    actions: [
+      {
+        id: "positive",
+        label: "Yes, it’s great!",
+        variant: "primary",
+        url: "https://apps.shopify.com/your-app-name#reviews",
+      },
+      {
+        id: "negative",
+        label: "No, I have suggestions",
+        variant: "tertiary",
+        url: "https://optimaio.com/pages/feedback",
+      },
+    ],
+  };
+
   const navigate = useNavigate();
 
   const [showToast, setShowToast] = useState(false);
+  const [showFeedbackCard, setShowFeedbackCard] = useState(true);
 
   useEffect(() => {
     if (!showToast) return;
@@ -49,7 +76,7 @@ export default function AppIndexPage() {
 
                   <InlineStack align="center">
                     <img
-                      src="/campaign-banner-cart-goal.svg"
+                      src="home-page/home-campaign-banner-cart-goal.svg"
                       alt="Cart goal illustration"
                       style={{ height: "150px" }}
                     />
@@ -94,7 +121,7 @@ export default function AppIndexPage() {
                 <Card padding="400">
                   <BlockStack gap="300" inlineAlign="center">
                     <img
-                      src="index-page/home-call.svg"
+                      src="home-page/home-call.svg"
                       alt="Help"
                       style={{ height: 48 }}
                     />
@@ -137,7 +164,7 @@ export default function AppIndexPage() {
                 <Card padding="400">
                   <BlockStack gap="300" inlineAlign="center">
                     <img
-                      src="index-page/home-chat.svg"
+                      src="home-page/home-chat.svg"
                       alt="Schedule demo"
                       style={{ height: 48 }}
                     />
@@ -190,6 +217,56 @@ export default function AppIndexPage() {
               </Box> */}
             </InlineStack>
           </Layout.Section>
+
+          {showFeedbackCard && (
+            <Layout.Section>
+              <Card padding="600">
+                <Box borderRadius="300">
+                  <InlineStack align="space-between" gap="600" wrap={false}>
+                    {/* Left content */}
+                    <BlockStack gap="300" inlineAlign="start">
+                      <Text variant="headingMd" as="h2">
+                        {feedbackConfig.title}
+                      </Text>
+
+                      <Text tone="subdued">{feedbackConfig.description}</Text>
+
+                      <InlineStack gap="200">
+                        {feedbackConfig.actions.map((action) => (
+                          <Button
+                            key={action.id}
+                            variant={action.variant}
+                            size="slim"
+                            url={action.url}
+                            target="_blank"
+                          >
+                            {action.label}
+                          </Button>
+                        ))}
+                      </InlineStack>
+                    </BlockStack>
+
+                    {/* Right illustration */}
+                    <InlineStack gap="200" inlineAlign="end" wrap={false}>
+                      <img
+                        src={feedbackConfig.illustration.src}
+                        alt={feedbackConfig.illustration.alt}
+                        style={{ height: feedbackConfig.illustration.height }}
+                      />
+                      {/* <Box>
+                        <Button
+                          variant="tertiary"
+                          icon={XIcon}
+                          accessibilityLabel="Dismiss feedback"
+                          onClick={() => setShowFeedbackCard(false)}
+                        />
+                      </Box> */}
+                    </InlineStack>
+                  </InlineStack>
+                </Box>
+              </Card>
+            </Layout.Section>
+          )}
         </Layout>
       </Box>
     </Page>

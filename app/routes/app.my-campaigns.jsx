@@ -47,6 +47,7 @@ import {
 } from "./utils/content/initialGoalContent";
 import CampaignGoal from "./components/campaignEdit/CampaignGoal";
 import TieredGoalCard from "./components/campaignEdit/TieredGoalCard";
+import { useNavigate } from "@remix-run/react";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -58,7 +59,7 @@ export default function CampaignIndexTable() {
   const [loading, setLoading] = useState(true);
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [searchParams] = useSearchParams();
-
+  const navigate = useNavigate();
   const goalRefs = useRef({});
   const lastAddedGoalId = useRef(null);
 

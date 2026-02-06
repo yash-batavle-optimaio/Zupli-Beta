@@ -62,6 +62,8 @@ export const action = async ({ request }) => {
         showProductImage: !!oneClickUpsell.showProductImage,
         showInCartList: !!oneClickUpsell.showInCartList,
 
+        // ✅ ADD THIS LINE
+        allowVariantSelection: !!oneClickUpsell.allowVariantSelection,
         // ✅ ADD
         upsellTitle:
           typeof oneClickUpsell.upsellTitle === "string"

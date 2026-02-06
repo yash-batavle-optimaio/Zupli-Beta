@@ -1,5 +1,14 @@
-import { Box, Button, InlineStack, BlockStack } from "@shopify/polaris";
+import {
+  Box,
+  Button,
+  InlineStack,
+  BlockStack,
+  Card,
+  Icon,
+  Text,
+} from "@shopify/polaris";
 import HelpHeader from "./HelpHeader";
+import { ColorIcon } from "@shopify/polaris-icons";
 
 /* ---------------- Toggle Pill ---------------- */
 function TogglePill({ value, onChange, labels = ["Yes", "No"] }) {
@@ -8,7 +17,7 @@ function TogglePill({ value, onChange, labels = ["Yes", "No"] }) {
       background="bg-surface-secondary"
       borderRadius="200"
       padding="100"
-      inlineSize="fit-content"
+      width="fit-content"
     >
       <InlineStack gap="100">
         <Button
@@ -74,7 +83,7 @@ export default function CartWidgetSettings({ value, onChange }) {
             background="bg-surface-secondary"
             borderRadius="200"
             padding="100"
-            inlineSize="fit-content"
+            width="fit-content"
           >
             <InlineStack gap="100">
               <Button
@@ -104,25 +113,55 @@ export default function CartWidgetSettings({ value, onChange }) {
         />
 
         <InlineStack paddingBlockStart="200">
-          <Box
-            background="bg-surface-secondary"
-            borderRadius="200"
-            padding="100"
-            inlineSize="fit-content"
-          >
-            <input
-              type="color"
-              value={widgetColor}
-              onChange={(e) => update({ widgetColor: e.target.value })}
+          <Card padding="200">
+            <Box
+              onClick={() =>
+                document.getElementById("widgetColorInput")?.click()
+              }
               style={{
-                width: 36,
-                height: 36,
-                border: "none",
-                background: "transparent",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                width: "100%",
               }}
-            />
-          </Box>
+            >
+              {/* Color swatch */}
+              <Box
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  background: widgetColor,
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon source={ColorIcon} tone="inverse" />
+              </Box>
+
+              {/* Label */}
+              <Text variant="bodyMd" tone="subdued">
+                Select color
+              </Text>
+
+              {/* Hidden color input */}
+              <input
+                type="color"
+                id="widgetColorInput"
+                value={widgetColor}
+                onChange={(e) => update({ widgetColor: e.target.value })}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: "1px",
+                  height: "1px",
+                  pointerEvents: "none",
+                }}
+              />
+            </Box>
+          </Card>
         </InlineStack>
       </Box>
     </BlockStack>
