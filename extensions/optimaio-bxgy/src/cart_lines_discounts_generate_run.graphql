@@ -1,9 +1,9 @@
-query RunInput($collectionIds: [ID!]){
+query RunInput($collectionIds: [ID!]) {
   shop {
     metafield(namespace: "optimaio_cart", key: "campaigns") {
       value
     }
-    localTime{
+    localTime {
       date
     }
   }
@@ -12,16 +12,25 @@ query RunInput($collectionIds: [ID!]){
       id
       quantity
       cost {
-        amountPerQuantity { amount }
+        amountPerQuantity {
+          amount
+        }
       }
-      attribute(key: "isBXGYGift") { key value }
+      attribute(key: "isBXGYGift") {
+        key
+        value
+      }
       merchandise {
         ... on ProductVariant {
           id
           title
           product {
+            hasTags(tags: ["exclude"]) {
+              tag
+              hasTag
+            }
             inAnyCollection(ids: $collectionIds)
-              inCollections(ids: $collectionIds) {
+            inCollections(ids: $collectionIds) {
               collectionId
               isMember
             }

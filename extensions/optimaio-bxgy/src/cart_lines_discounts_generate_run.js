@@ -19,8 +19,12 @@ import {
 export function cartLinesDiscountsGenerateRun(input) {
   if (!input.cart.lines.length) throw new Error("No cart lines found");
 
-  const hasOrderDiscountClass = input.discount.discountClasses.includes(DiscountClass.Order);
-  const hasProductDiscountClass = input.discount.discountClasses.includes(DiscountClass.Product);
+  const hasOrderDiscountClass = input.discount.discountClasses.includes(
+    DiscountClass.Order,
+  );
+  const hasProductDiscountClass = input.discount.discountClasses.includes(
+    DiscountClass.Product,
+  );
 
   if (!hasOrderDiscountClass && !hasProductDiscountClass) {
     return { operations: [] };
@@ -29,6 +33,12 @@ export function cartLinesDiscountsGenerateRun(input) {
   const operations = [];
   const productDiscountCandidates = [];
   const orderDiscountCandidates = [];
+
+  // Exclude function
+  const isExcludedProduct = (line) => {
+    const tags = line.merchandise?.product?.hasTags || [];
+    return tags.some((t) => t.tag === "exclude" && t.hasTag === true);
+  };
 
   /* =========================================================
      🟣 Parse metafield campaigns
@@ -42,7 +52,7 @@ export function cartLinesDiscountsGenerateRun(input) {
 
   // Filter only active BXGY campaigns
   let campaigns = (campaignData.campaigns || []).filter(
-    (c) => c.status === "active" && c.campaignType === "bxgy"
+    (c) => c.status === "active" && c.campaignType === "bxgy",
   );
 
   // Sort by priority (lower number = higher priority)
@@ -58,24 +68,26 @@ export function cartLinesDiscountsGenerateRun(input) {
     const lockedGifts = new Set();
 
     // Helper to match cart lines by collection
-   const isInCollection = (line, collectionIds = []) => {
-  if (!collectionIds?.length) return false;
-  const lineCollections = line.merchandise?.product?.inCollections || [];
-  return lineCollections.some(
-    (c) => c.isMember && collectionIds.includes(c.collectionId)
-  );
-};
-
+    const isInCollection = (line, collectionIds = []) => {
+      if (!collectionIds?.length) return false;
+      const lineCollections = line.merchandise?.product?.inCollections || [];
+      return lineCollections.some(
+        (c) => c.isMember && collectionIds.includes(c.collectionId),
+      );
+    };
 
     campaigns.forEach((campaign) => {
-      const { campaignName, goals, priority, activeDates, tzOffsetMinutes } = campaign;
+      const { campaignName, goals, priority, activeDates, tzOffsetMinutes } =
+        campaign;
       if (!goals?.length) return;
 
       /* =========================================================
          🕒 DATE FILTER — Only run if campaign is active today
          ========================================================= */
       const shopDateStr = input.shop?.localTime?.date; // e.g. "2025-11-11"
-      const shopNow = shopDateStr ? new Date(`${shopDateStr}T00:00:00Z`) : new Date();
+      const shopNow = shopDateStr
+        ? new Date(`${shopDateStr}T00:00:00Z`)
+        : new Date();
 
       // Apply campaign's timezone offset (minutes)
       const offsetMs = (tzOffsetMinutes || 0) * 60 * 1000;
@@ -88,12 +100,14 @@ export function cartLinesDiscountsGenerateRun(input) {
         ? new Date(`${activeDates.end?.date}T23:59:59Z`)
         : null;
 
-      const startLocal = startDate ? new Date(startDate.getTime() + offsetMs) : null;
+      const startLocal = startDate
+        ? new Date(startDate.getTime() + offsetMs)
+        : null;
       const endLocal = endDate ? new Date(endDate.getTime() + offsetMs) : null;
 
       // Skip if not within active window
       if (!startLocal) return;
-      if (nowLocal < startLocal) return;     // Not started yet
+      if (nowLocal < startLocal) return; // Not started yet
       if (endLocal && nowLocal > endLocal) return; // Expired
 
       /* =========================================================
@@ -113,7 +127,6 @@ export function cartLinesDiscountsGenerateRun(input) {
 
         console.log(`⚙️ Evaluating campaign '${campaignName}' (active today)`);
 
-
         let conditionMet = false;
 
         /* =========================================================
@@ -123,19 +136,23 @@ export function cartLinesDiscountsGenerateRun(input) {
           case "product": {
             const productQtyMap = {};
             input.cart.lines.forEach((line) => {
+              if (isExcludedProduct(line)) return;
               const pid = line.merchandise?.id;
               if (!pid) return;
-              productQtyMap[pid] = (productQtyMap[pid] || 0) + (line.quantity ?? 1);
+              productQtyMap[pid] =
+                (productQtyMap[pid] || 0) + (line.quantity ?? 1);
             });
             conditionMet = buyProductIds.every(
-              (pid) => (productQtyMap[pid] || 0) >= buyQty
+              (pid) => (productQtyMap[pid] || 0) >= buyQty,
             );
             break;
           }
 
           case "collection": {
             let totalQtyInCollection = 0;
+
             input.cart.lines.forEach((line) => {
+              if (isExcludedProduct(line)) return;
               if (isInCollection(line, buyCollectionIds)) {
                 totalQtyInCollection += line.quantity ?? 1;
               }
@@ -144,52 +161,61 @@ export function cartLinesDiscountsGenerateRun(input) {
             break;
           }
 
-         case "spend_any_collection": {
-  let totalSpend = 0;
-  input.cart.lines.forEach((line) => {
-    // ✅ count spend only from products that belong to this campaign’s collections
-    if (isInCollection(line, buyCollectionIds)) {
-      totalSpend +=
-        parseFloat(line.cost.amountPerQuantity.amount) * (line.quantity ?? 1);
-    }
-  });
-  console.log(
-    `💰 Spend check (${campaignName}): need ₹${spendAmount}, got ₹${totalSpend}`
-  );
-  conditionMet = totalSpend >= spendAmount;
-  break;
-}
+          case "spend_any_collection": {
+            let totalSpend = 0;
+            input.cart.lines.forEach((line) => {
+              // ✅ count spend only from products that belong to this campaign’s collections
 
+              if (isExcludedProduct(line)) return;
 
-    case "all":
-case "storewide": {
-  // Collect all potential Y gift IDs from active BXGY campaigns
-  const allGiftIds = campaigns.flatMap((c) =>
-    (c.goals || []).flatMap((g) => g.getProducts?.map((p) => p.id) || [])
-  );
+              if (isInCollection(line, buyCollectionIds)) {
+                totalSpend +=
+                  parseFloat(line.cost.amountPerQuantity.amount) *
+                  (line.quantity ?? 1);
+              }
+            });
+            console.log(
+              `💰 Spend check (${campaignName}): need ₹${spendAmount}, got ₹${totalSpend}`,
+            );
+            conditionMet = totalSpend >= spendAmount;
+            break;
+          }
 
-  // 🧮 Count only *real* purchased items (exclude gifts, zero cost, or invalid lines)
-  const totalQty = input.cart.lines.reduce((sum, line) => {
-    const qty = Number(line.quantity) || 0;
-    const pid = line.merchandise?.id || "";
-    const price = parseFloat(line.cost?.amountPerQuantity?.amount || "0");
+          case "all":
+          case "storewide": {
+            // Collect all potential Y gift IDs from active BXGY campaigns
+            const allGiftIds = campaigns.flatMap((c) =>
+              (c.goals || []).flatMap(
+                (g) => g.getProducts?.map((p) => p.id) || [],
+              ),
+            );
 
-    // Skip invalid, zero-cost, or already gift items
-    if (qty <= 0) return sum;
-    if (price === 0) return sum;
-    if (allGiftIds.includes(pid)) return sum;
-    if (/gift|free/i.test(line.merchandise?.title || "")) return sum;
+            // 🧮 Count only *real* purchased items (exclude gifts, zero cost, or invalid lines)
+            const totalQty = input.cart.lines.reduce((sum, line) => {
+              if (isExcludedProduct(line)) return sum;
 
-    return sum + qty;
-  }, 0);
+              const qty = Number(line.quantity) || 0;
+              const pid = line.merchandise?.id || "";
+              const price = parseFloat(
+                line.cost?.amountPerQuantity?.amount || "0",
+              );
 
-  conditionMet = totalQty >= buyQty;
-  console.log(`🧮 Storewide check: need ${buyQty}, have ${totalQty} → ${conditionMet}`);
-  
-  break;
-}
+              // Skip invalid, zero-cost, or already gift items
+              if (qty <= 0) return sum;
+              if (price === 0) return sum;
+              if (allGiftIds.includes(pid)) return sum;
+              if (/gift|free/i.test(line.merchandise?.title || "")) return sum;
 
+              return sum + qty;
+            }, 0);
 
+            conditionMet = totalQty >= buyQty;
+            console.log(
+              `🧮 Storewide check: need ${buyQty}, have ${totalQty} → ${conditionMet}`,
+            );
+
+            break;
+          }
 
           default:
             conditionMet = false;
@@ -199,7 +225,9 @@ case "storewide": {
            ✅ If Condition Met — Apply Discount
            ========================================================= */
         if (conditionMet && getProductIds.length > 0) {
-          console.log(`✅ Campaign Passed: ${campaignName} (Priority: ${priority})`);
+          console.log(
+            `✅ Campaign Passed: ${campaignName} (Priority: ${priority})`,
+          );
 
           // 🔒 Lock buys/collections so lower-priority cannot reuse
           buyProductIds.forEach((pid) => lockedBuyProducts.add(pid));
@@ -208,14 +236,16 @@ case "storewide": {
           let discountedCount = 0;
 
           for (const line of input.cart.lines) {
+            if (isExcludedProduct(line)) continue;
             const pid = line.merchandise?.id;
 
-              const isGift =
-    line.attribute?.key === "isBXGYGift" && line.attribute?.value === "true";
+            const isGift =
+              line.attribute?.key === "isBXGYGift" &&
+              line.attribute?.value === "true";
 
             if (
               getProductIds.includes(pid) &&
-              isGift && 
+              isGift &&
               !lockedGifts.has(pid) &&
               discountedCount < getQtyLimit &&
               !discountedLineIds.has(line.id)
@@ -258,7 +288,6 @@ case "storewide": {
     });
   }
 
-  
   /* =========================================================
      🟢 Order discount (optional demo)
      ========================================================= */
