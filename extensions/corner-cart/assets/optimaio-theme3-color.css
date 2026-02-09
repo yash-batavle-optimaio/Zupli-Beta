@@ -1,0 +1,32 @@
+body[data-optimaio-theme="theme3"] {
+  /* ---------- Base Colors ---------- */
+  --bg-primary: #fff7fa;
+  --bg-secondary: #ffeaf2;
+  --bg-soft: #ffd6e6;
+
+  /* ---------- Text Colors ---------- */
+  --text-primary: #2a0f1a;
+  --text-secondary: #7a3b52;
+  --text-muted: #a66a80;
+
+  /* ---------- Borders & Shadow ---------- */
+  --border: #f3c1d3;
+  --shadow: rgba(0,0,0,0.10);
+
+  /* ---------- Accents ---------- */
+  --accent: #e11d48;
+  --accent-soft: rgba(225,29,72,0.14);
+  --accent-contrast: #ffffff;
+
+
+  /* ---------- Progress ---------- */
+  --progress-inactive: #f1b6cb;
+
+  /* ---------- Discounts ---------- */
+  --discount-text: #9f1239;
+}
+
+  /* Progress fill – default (solid) */
+  .optimaio-progress-fill {
+    background: var(--accent);
+  }

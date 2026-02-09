@@ -3,9 +3,7 @@
   if (window.__freeGiftInit) return;
   window.__freeGiftInit = true;
 
-
   console.log("🎁 Ultra-Fast Dynamic Free Gift script initializing…");
-
 
   // ----------------------------
   // 🔒 STATE & UTILITIES
@@ -19,9 +17,7 @@
   let debounceTimer = null;
   window.__isGiftInProgress = false;
 
-
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-
 
   // auto-tune delay based on connection
   const isSlowConnection =
@@ -29,13 +25,11 @@
     navigator.connection?.rtt > 600;
   const WAIT = isSlowConnection ? 200 : 80;
 
-
   // ----------------------------
   // 🛒 CART HELPERS
   // ----------------------------
-  async function getCart() {
-  const res = await fetch("/cart.js", { cache: "no-store" });
-  return await res.json();
+ async function getCart() {
+  return await window.OptimaioCartController.getCart();
 }
 
 
@@ -51,7 +45,6 @@
     window.__isGiftInProgress = false;
   }
 
-
   const addToCart = id =>
     cartChange("add", { id, quantity: 1, properties: { isFreeGift: "true" } });
   const updateQuantityToOne = key =>
@@ -59,47 +52,44 @@
   const removeByKey = key =>
     cartChange("change", { id: key, quantity: 0 });
 
-
   // ----------------------------
 // 🎯 CAMPAIGN DATA (with fetch timer)
 // ----------------------------
 async function parseCampaignData() {
-  const start = performance.now(); // ⏱️ START TIMER
-
+  const start = performance.now(); // ⏱ Start timer
 
   try {
- const url = `https://campaign-worker.developer-208.workers.dev/?shop=${window.__SHOP_DOMAIN__}`;
-  console.log("free Fetching live campaign:", url);
+    // 🟦 Use global cached function
+   const data = await getCampaignData();
 
-  const res = await fetch(url, { cache: "no-store" });
-  const dataRes = await res.json();
-  const data = dataRes.campaigns;
-
-  // console.log("free DATA:", data.campaigns);
-
-
-    const end = performance.now(); // ⏱️ END TIMER
+    const end = performance.now(); // ⏱ End timer
     const timeTaken = Math.round(end - start);
 
+    console.log(
+      `⚡ Free Gift Campaign (cached) fetched in ${timeTaken} ms`,
+      data
+    );
 
-    console.log(`⚡ Free Gift Campaign fetch time: ${timeTaken} ms`, data);
+    if (!data || !data.campaigns) return null;
 
+    const active = data.campaigns.filter(c => c.status === "active");
+    if (!active.length) return null;
 
-    const active = (data.campaigns || []).filter(c => c.status === "active");
-    if (active.length) {
-      active.sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
-      return active[0];
-    }
+    active.sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+
+    return active[0];
   } catch (err) {
     const end = performance.now();
     const timeTaken = Math.round(end - start);
-    console.warn(`⚠️ Free Gift Campaign fetch FAILED after ${timeTaken} ms`, err);
+
+    console.warn(
+      `⚠️ Free Gift Campaign fetch FAILED after ${timeTaken} ms`,
+      err
+    );
+
+    return null;
   }
-
-
-  return null;
 }
-
 
 
 
@@ -107,6 +97,8 @@ async function parseCampaignData() {
   // 🎨 POPUP (deferred creation)
   // ----------------------------
   requestIdleCallback(() => {
+    if (document.getElementById("optimaio-gift-popup")) return;
+  
     const popupHTML = `
       <div id="optimaio-gift-popup" class="optimaio-gift-popup" style="display:none;">
         <div class="optimaio-gift-popup__inner">
@@ -119,27 +111,18 @@ async function parseCampaignData() {
             <button id="optimaio-confirm-gifts" class="optimaio-btn">Confirm</button>
           </div>
         </div>
-      </div>`;
-    if (!document.getElementById("optimaio-gift-popup"))
-      document.body.insertAdjacentHTML("beforeend", popupHTML);
-
-
-    const style = document.createElement("style");
-    style.textContent = `
-      .optimaio-gift-popup{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:11000;font-family:Inter,sans-serif;}
-      .optimaio-gift-popup__inner{background:#fff;padding:20px;border-radius:16px;width:90%;max-width:420px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.25);}
-      .optimaio-gift-option{display:inline-block;margin:10px;cursor:pointer;border:2px solid transparent;border-radius:10px;padding:6px;background:#fff7f8;width:120px;transition:all .2s;}
-      .optimaio-gift-option img{width:80px;height:80px;border-radius:8px;object-fit:cover;}
-      .optimaio-gift-option p{font-size:13px;font-weight:500;color:#222;margin:6px 0 0;}
-      .optimaio-gift-option:hover{border-color:#f1b0b0;transform:translateY(-2px);}
-      .optimaio-gift-option.selected{border-color:#d48b8b;background:#fdeaea;}
-      .optimaio-btn{background:#000;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;margin:8px;}
-      .optimaio-btn--light{background:#eee;color:#333;}
-      .optimaio-gift-popup__actions{display:flex;justify-content:center;gap:10px;margin-top:12px;}
+      </div>
     `;
-    document.head.appendChild(style);
+  
+    const cartDrawer =
+      document.querySelector("#optimaio-cart-drawer") ||
+      document.querySelector(".optimaio-cart-drawer");
+  
+    if (!cartDrawer) return;
+  
+    cartDrawer.insertAdjacentHTML("beforeend", popupHTML);
   });
-
+  
 
   // ----------------------------
   // 🪄 POPUP HANDLER
@@ -151,7 +134,6 @@ async function parseCampaignData() {
     const error = document.getElementById("optimaio-gift-error");
     maxEl.textContent = maxQty;
     error.style.display = "none";
-
 
     container.innerHTML = products
       .map(
@@ -165,10 +147,8 @@ async function parseCampaignData() {
       )
       .join("");
 
-
     popup.style.display = "flex";
     const selected = new Set();
-
 
     container.querySelectorAll(".optimaio-gift-option").forEach(opt => {
       opt.onclick = () => {
@@ -187,7 +167,6 @@ async function parseCampaignData() {
       };
     });
 
-
     document.getElementById("optimaio-cancel-gifts").onclick = () =>
       (popup.style.display = "none");
     document.getElementById("optimaio-confirm-gifts").onclick = async () => {
@@ -197,7 +176,6 @@ async function parseCampaignData() {
     };
   }
 
-
   // ----------------------------
   // 🎁 CORE GIFT LOGIC
   // ----------------------------
@@ -205,13 +183,11 @@ async function parseCampaignData() {
     if (window.__isGiftInProgress) return;
     window.__isGiftInProgress = true;
 
-
     try {
       const campaign = await parseCampaignData();
       if (!campaign) return;
       const giftGoal = campaign.goals?.find(g => g.type === "free_product");
       if (!giftGoal || !giftGoal.products?.length) return;
-
 
       const giftVariantIds = giftGoal.products.map(p =>
         Number(p.id.split("/").pop())
@@ -219,40 +195,36 @@ async function parseCampaignData() {
       const cart = await getCart();
       const giftLines = cart.items.filter(i => i.properties?.isFreeGift === "true");
       const hasNonGiftProducts = cart.items.some(
-        i => !giftVariantIds.includes(i.variant_id)
-      );
+  i => !i.properties?.isFreeGift && !i.properties?.isBXGYGift
+);
 
 
       const subtotal =
         cart.items
-          .filter(i => !giftVariantIds.includes(i.variant_id))
+          .filter(i => !i.properties?.isFreeGift && !i.properties?.isBXGYGift)
+
           .reduce((a, i) => a + i.final_line_price, 0) / 100;
 
-
       const totalQty = cart.items
-        .filter(i => !giftVariantIds.includes(i.variant_id))
-        .reduce((a, i) => a + i.quantity, 0);
+        .filter(i => !i.properties?.isFreeGift && !i.properties?.isBXGYGift)
 
+        .reduce((a, i) => a + i.quantity, 0);
 
       const trackType = campaign.trackType;
       const targetAmount = parseFloat(giftGoal.target || giftGoal.thresholdAmount || 0);
       const targetQty = parseInt(giftGoal.target || giftGoal.minQty || 0, 10);
 
-
       const conditionMet =
         trackType === "quantity" ? totalQty >= targetQty : subtotal >= targetAmount;
       console.log(`[🎯 Gift Check] Condition met: ${conditionMet}`);
-
 
       // enforce quantity = 1
       for (const g of giftLines)
         if (g.quantity !== 1) await updateQuantityToOne(g.key);
 
-
       if (conditionMet && hasNonGiftProducts) {
         const giftCount = giftGoal.products.length;
         const giftQty = giftGoal.giftQty || 1;
-
 
         if (giftCount === 1) {
           const vid = giftVariantIds[0];
@@ -264,13 +236,11 @@ async function parseCampaignData() {
         for (const g of giftLines) await removeByKey(g.key);
       }
 
-
       document.dispatchEvent(new CustomEvent("optimaio:cart:refresh"));
     } finally {
       window.__isGiftInProgress = false;
     }
   }
-
 
   // ----------------------------
   // ⚡ CART EVENT HOOKS (Debounced)
@@ -280,7 +250,6 @@ async function parseCampaignData() {
     debounceTimer = setTimeout(() => ensureFreeGift(), 250);
   };
 
-
   const _fetch = window.fetch;
   window.fetch = async (...args) => {
     const res = await _fetch(...args);
@@ -288,7 +257,6 @@ async function parseCampaignData() {
     if (/\/cart\/(add|change|update|clear)\.js/.test(url)) triggerGiftCheck();
     return res;
   };
-
 
   const _open = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
@@ -302,12 +270,10 @@ async function parseCampaignData() {
     return _open.call(this, method, url, ...rest);
   };
 
-
   // ----------------------------
   // 🧩 INITIAL LOAD + PREFETCH
   // ----------------------------
   window.addEventListener("DOMContentLoaded", () => getCart());
-
 
   setTimeout(async () => {
     const cart = await getCart();
@@ -317,4 +283,3 @@ async function parseCampaignData() {
     ensureFreeGift();
   }, 800);
 })();
-

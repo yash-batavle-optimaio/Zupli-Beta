@@ -21,7 +21,7 @@ import { requireBilling } from "./utils/requireBilling.server";
 // Loader: makes sure the request is authenticated
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
-  await requireBilling({ admin, session });
+  // await requireBilling({ admin, session });
   return null;
 };
 

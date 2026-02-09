@@ -1,138 +1,108 @@
 <div id="optimaio-progress-container"></div>
 
 
-<style>
-#optimaio-progress-container {
-  padding: 10px 0 20px;
-}
-.optimaio-progress-message {
-  text-align: center;
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-.optimaio-progress-bar {
-  height: 6px;
-  background: #00000010;
-  border-radius: 6px;
-  position: relative;
-  margin-bottom: 28px;
-  width: 90%;
-}
-.optimaio-progress-fill {
-  height: 100%;
-  background: #000 !important;
-  width: 0%;
-  border-radius: 6px;
-  transition: width .4s ease;
-}
-.optimaio-progress-milestones {
-  position: absolute;
-  top: -18px;
-  left: 0;
-  width: 100%;
-  height: 1px;
-}
-.optimaio-milestone {
-  position: absolute;
-  transform: translate(-50%, 8px);
-  text-align: center;
-}
-.optimaio-milestone-icon svg {
-  width: 22px;
-  height: 22px;
-  padding: 1px;
-  background: #fff;
-  border-radius: 50%;
-  border: 2px solid #000;
-}
-.optimaio-milestone.active svg {
-  background: #000;
-  stroke: #fff;
-  fill: #fff;
-}
-.optimaio-milestone-label {
-  font-size: 11px;
-  font-weight: bold;
-  line-height: normal;
-}
-#optimaio-progress-container .optimaio-progress-fill {
-  background: #000 !important;
-  display: block !important;
-}
-</style>
-
+ <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script> 
 
 <script>
 (() => {
   if (window.__OptimaioProMilestonesInit) return;
   window.__OptimaioProMilestonesInit = true;
 
+  /* =============================
+   CONFETTI FEATURE FLAG
+============================= */
+const offerAnimation =
+  window.__OPTIMAIO_CART__?.settings?.cartFeatures?.offerAnimation;
 
-  {% comment %} let cache = null, cacheTime = 0;
-  const CACHE_TIME = 120000; {% endcomment %}
+const CONFETTI_ENABLED = offerAnimation === "confetti";
+
+
+  // 🔥 Warm campaign cache early (safe, deduped)
+if (typeof getCampaignData === "function") {
+  getCampaignData().catch(() => null);
+}
+
+
+  window.__OptimaioDrawerOpen = false;
+function isDrawerOpen() {
+  const drawer = document.querySelector(".optimaio-cart-drawer");
+  return drawer && drawer.classList.contains("open");
+}
+
+
+
+  // Track milestone achievements (resets when user drops below)
+window.__OptimaioAchievedMilestones = window.__OptimaioAchievedMilestones || new Set();
+
+
+  // UI element cache (performance only)
+const uiCache = {
+  fill: null,
+  msg: null,
+  milestones: null,
+  container: null
+};
+
+function cacheUI() {
+  uiCache.fill = document.querySelector(".optimaio-progress-fill");
+  uiCache.msg = document.querySelector(".optimaio-progress-message");
+  uiCache.milestones = document.querySelectorAll(".optimaio-milestone");
+  uiCache.container = document.getElementById("optimaio-progress-container");
+}
 
 
   function fillTemplate(str, vars) {
     return str.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
   }
 
-
-  async function fetchCampaign() {
-  const start = performance.now();
-
+ async function fetchCampaign() {
+  const start = performance.now(); // ⏱ START TIMER
 
   try {
-   const url = `https://campaign-worker.developer-208.workers.dev/?shop=${window.__SHOP_DOMAIN__}`;
-  console.log("pro Fetching live campaign:", url);
+    if (typeof getCampaignData !== "function") {
+      console.warn("⚠️ Progress Bar: getCampaignData() is NOT available!");
+      return null;
+    }
 
-  const res = await fetch(url, { cache: "no-store" });
-   const dataRes = await res.json();
-  const data = dataRes.campaigns;
-
-  console.log("pro DATA:", data);
-
+    const data = await getCampaignData();
 
     const end = performance.now();
-    console.log(`⚡ Campaign fetch time: ${Math.round(end - start)} ms`);
-
+    console.log(`⚡ Progress Bar Campaign fetched in ${Math.round(end - start)} ms`, data);
 
     return data;
+
   } catch (err) {
     const end = performance.now();
-    console.warn(`⚠️ Campaign fetch failed after ${Math.round(end - start)} ms`, err);
+    console.warn(`⚠️ Progress Bar Campaign fetch failed after ${Math.round(end - start)} ms`, err);
     return null;
   }
 }
 
 
 
+
   function extractSteps(data) {
+    if (!data?.campaigns) return null;
     
   // 1️⃣ Filter ONLY tiered / cart-goal campaigns (NOT bxgy)
   const tieredCampaigns = data.campaigns
-.filter(c =>
+    .filter(c =>
       c.status === "active" &&
       c.campaignType === "tiered" &&           // ignore bxgy
       Array.isArray(c.goals) &&
       c.goals.length > 0
     );
 
-
   // 2️⃣ No valid tiered campaigns → no progress bar
   if (tieredCampaigns.length === 0) return null;
-
 
   // 3️⃣ Pick the highest priority (lowest number)
   tieredCampaigns.sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
 
-
   const active = tieredCampaigns[0]; // the winning campaign
     if (!active || !active.goals || active.goals.length === 0) return null;
 
-
     const content = active.content || {};
-
 
     function ordinal(n) {
       if (n === 1) return "1st";
@@ -141,7 +111,6 @@
       return n + "th";
     }
 
-
     const steps = active.goals
       .filter(g => Number(g.target) > 0)
       .sort((a, b) => a.target - b.target)
@@ -149,13 +118,11 @@
         const goalKey = `${ordinal(index + 1)} goal`;
         const goalContent = content[goalKey] || {};
 
-
         const defaultLabel =
           g.type === "free_shipping" ? "Free Shipping" :
           g.type === "order_discount" ? `${g.discountValue}% Off` :
           g.type === "free_product" ? "Free Gift" :
           "Reward";
-
 
         return {
           threshold: Number(g.target),
@@ -165,14 +132,13 @@
         };
       });
 
-
     return { steps, trackType: active.trackType, content };
   }
-
 
   function renderUI(container, config) {
     container.innerHTML = `
       <div class="optimaio-progress-message"></div>
+      <div class="optimaio-progress-bar-container">
       <div class="optimaio-progress-bar">
         <div class="optimaio-progress-fill"></div>
         <div class="optimaio-progress-milestones">
@@ -184,13 +150,12 @@
           `).join("")}
         </div>
       </div>
+      </div>
     `;
-
 
     if (!config.steps?.length) return;
     const maxT = config.steps.at(-1)?.threshold;
     if (!maxT) return;
-
 
     document.querySelectorAll(".optimaio-milestone").forEach((m, i) => {
   const total = config.steps.length;
@@ -198,52 +163,102 @@
   m.style.left = pct + "%";
 });
 
+cacheUI();
 
   }
 
+      function isGiftItem(item) {
+  return item.properties?.isFreeGift === "true" || item.properties?.isBXGYGift === "true";
+}
 
-  async function updateProgress(cart, config) {
-    if (!config || !config.steps?.length) return;
+function ensureDrawerConfettiCanvas() {
+  const drawer = document.querySelector(".optimaio-cart-drawer");
+  if (!drawer) return null;
+
+  let canvas = document.getElementById("optimaio-cart-confetti");
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    canvas.id = "optimaio-cart-confetti";
+    drawer.appendChild(canvas);
+
+    // ✅ SET SIZE ONLY ONCE (BEFORE worker)
+    canvas.width = drawer.clientWidth;
+    canvas.height = drawer.clientHeight;
+  }
+
+  return canvas;
+}
 
 
-    const fill = document.querySelector(".optimaio-progress-fill");
-    const msg = document.querySelector(".optimaio-progress-message");
-    const milestones = document.querySelectorAll(".optimaio-milestone");
+let drawerConfettiInstance = null;
+
+function fireConfetti() {
+  if (!CONFETTI_ENABLED) return;
+  if (!isDrawerOpen()) return;
 
 
-    if (!fill || !msg || milestones.length === 0) return;
+  const canvas = ensureDrawerConfettiCanvas();
+  if (!canvas) return;
 
+  if (!drawerConfettiInstance) {
+    drawerConfettiInstance = confetti.create(canvas, {
+      resize: false,   // ⛔ IMPORTANT
+      useWorker: true  // ✅ OK now
+    });
+  }
 
-    // Hide progress bar if cart is empty
-const container = document.getElementById("optimaio-progress-container");
-
-
-if (cart.items.length === 0) {
-  container.style.display = "none";
-  return;
-} else {
-  container.style.display = "block";
+  drawerConfettiInstance({
+    particleCount: 200,
+    spread: 90,
+    startVelocity: 55,
+    gravity: 1.3,
+    origin: { x: 1, y: 1 }
+  });
 }
 
 
 
-    const subtotal = cart.items.reduce((t, i) => t + i.final_line_price, 0) / 100;
-    const qty = cart.items.reduce((t, i) => t + i.quantity, 0);
-    const value = config.trackType === "quantity" ? qty : subtotal;
+  async function updateProgress(cart, config) {
+    if (!isDrawerOpen()) return;
+    if (!config || !config.steps?.length) return;
 
+    const { fill, msg, milestones, container } = uiCache;
+
+
+    if (!fill || !msg || milestones.length === 0) return;
+
+    // Hide progress bar if cart is empty
+{% comment %} const container = document.getElementById("optimaio-progress-container"); {% endcomment %}
+
+if (cart.items.length === 0) {
+  container.style.display = "none";
+  window.__OptimaioAchievedMilestones = new Set(); // reset all
+  return;
+}
+ else {
+  container.style.display = "block";
+}
+
+
+    const subtotal = cart.items
+  .filter(i => !isGiftItem(i))
+  .reduce((t, i) => t + i.final_line_price, 0) / 100;
+
+    const qty = cart.items
+  .filter(i => !isGiftItem(i))
+  .reduce((t, i) => t + Number(i.quantity || 0), 0);
+
+    const value = config.trackType === "quantity" ? qty : subtotal;
 
     const maxT = config.steps.at(-1)?.threshold;
     if (!maxT) return;
-
 
     // Equally spaced milestone positions
 const total = config.steps.length;
 const positions = config.steps.map((s, i) => ((i + 1) / total) * 100);
 
-
 // Thresholds array
 const thresholds = config.steps.map(s => s.threshold);
-
 
 // Find active milestone index
 let idx = thresholds.findIndex(t => value < t);
@@ -261,38 +276,53 @@ if (idx === -1) {
   const prevP = positions[idx - 1];
   const nextP = positions[idx];
 
-
   const range = (value - prevT) / (nextT - prevT);
   const pct = prevP + range * (nextP - prevP);
-
 
   fill.style.width = pct + "%";
 }
 
 
+   config.steps.forEach((s, i) => {
+  const isActive = value >= s.threshold;
+  const milestoneEl = milestones[i];
 
-    config.steps.forEach((s, i) => {
-      const isActive = value >= s.threshold;
-      milestones[i].classList.toggle("active", isActive);
-      milestones[i].querySelector(".optimaio-milestone-label").textContent =
-        isActive ? s.afterLabel : s.beforeLabel;
-    });
+  // --- UI Update ---
+  milestoneEl.classList.toggle("active", isActive);
+  milestoneEl.querySelector(".optimaio-milestone-label").textContent =
+    isActive ? s.afterLabel : s.beforeLabel;
+
+  // --- CONFETTI LOGIC FOR ALL MILESTONES ---
+  if (isActive) {
+    // Fire confetti ONLY when milestone becomes newly achieved
+    if (!window.__OptimaioAchievedMilestones.has(i)) {
+      if (isDrawerOpen()) {
+  fireConfetti();
+}
+
+      window.__OptimaioAchievedMilestones.add(i);
+      console.log("🎉 Milestone reached →", i + 1);
+    }
+  } else {
+    // If user falls below → reset milestone so we can celebrate again later
+    if (window.__OptimaioAchievedMilestones.has(i)) {
+      window.__OptimaioAchievedMilestones.delete(i);
+      console.log("🔄 Milestone reset →", i + 1);
+    }
+  }
+});
 
 
     const next = config.steps.find(s => value < s.threshold);
-
 
     if (!next) {
       msg.textContent = config.content.progressTextAfter || "You have unlocked all rewards!";
       return;
     }
 
-
     const remain = next.threshold - value;
 
-
     /** ⭐ DYNAMIC MESSAGE FIX STARTS HERE ⭐ **/
-
 
     const nextIndex = config.steps.indexOf(next);
     const ordinalKey =
@@ -301,65 +331,50 @@ if (idx === -1) {
       nextIndex === 2 ? "3rd goal" :
       `${nextIndex + 1}th goal`;
 
-
     const dynamicBefore =
       config.content?.[ordinalKey]?.progressTextBefore?.trim() || "";
 
-
     const remainValue =
       config.trackType === "quantity" ? remain : remain.toFixed(2);
-
 
     if (dynamicBefore) {
       msg.textContent = fillTemplate(dynamicBefore, { remain: remainValue });
       return;
     }
 
-
     /** ⭐ DEFAULT MESSAGE (Fallback) ⭐ **/
-
 
     msg.textContent =
       config.trackType === "quantity"
         ? `Add ${remain} more items to unlock ${next.beforeLabel}`
         : `Spend ₹${remain.toFixed(2)} more to unlock ${next.beforeLabel}`;
 
-
     /** ⭐ DYNAMIC MESSAGE FIX ENDS HERE ⭐ **/
   }
 
-
-  document.addEventListener("optimaio:cart:refresh", async () => {
-    const data = await fetchCampaign();
-    const config = extractSteps(data);
-    if (!config || !config.steps?.length) return;
-
-
-    const cart = await fetch("/cart.js").then(r => r.json());
-    updateProgress(cart, config);
-  });
+  document.addEventListener("optimaio:cart:updated", async (e) => {
+  const cart = e.detail;  // ✅ works
+  const data = await getCampaignData();  // uses shared campaign
+  const config = extractSteps(data);
+  updateProgress(cart, config);
+});
 
 
   (async function init() {
     const container = document.getElementById("optimaio-progress-container");
-    const data = await fetchCampaign();
-    const config = extractSteps(data);
+    const data = await getCampaignData();
 
+    const config = extractSteps(data);
 
     if (!config || !config.steps?.length) {
       container.style.display = "none";
       return;
     }
 
-
     renderUI(container, config);
 
-
-    const cart = await fetch("/cart.js").then(r => r.json());
+    const cart = await window.OptimaioCartController.getCart();
     updateProgress(cart, config);
   })();
 })();
 </script>
-
-
-

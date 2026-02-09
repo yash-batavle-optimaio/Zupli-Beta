@@ -1,0 +1,45 @@
+/* =====================================================
+   OPTIMAIO CART DRAWER - THEME: THEME1 (MINIMAL)
+   Default soft pink & black theme
+===================================================== */
+
+body[data-optimaio-theme="theme1"] {
+  /* ---------- Base Colors ---------- */
+  --bg-primary: #fff7f8;
+  --bg-secondary: #ffffff;
+  --header-bg: #ffffff;
+  --summary-bg: #ffffff;
+  --footer-bg: #ffffff;
+
+  --border: #cec5c5;
+  --bg-soft: #ccc;
+
+  /* ---------- Text Colors ---------- */
+  --text-primary: #222;
+  --text-muted: #666;
+
+  /* ---------- Buttons ---------- */
+  --btn-bg: #000;
+  --btn-color: #fff;
+
+  /* ---------- Accents ---------- */
+  --accent: #d48b8b;
+
+  /* ---------- Alerts / Progress ---------- */
+  --alert-bg: #fdeaea;
+  --alert-text: #a33;
+  --accent: #d48b8b;
+  --progress-inactive: #ccc;
+
+  /* ---------- Discounts ---------- */
+  --bg-soft: #fdeaea;
+  --discount-text: #a33;
+
+  /* ---------- Spinner ---------- */
+  --spinner-color: #999;
+}
+
+  /* Progress fill – default (solid) */
+  .optimaio-progress-fill {
+    background: var(--accent);
+  }

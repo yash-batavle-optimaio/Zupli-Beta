@@ -34,12 +34,6 @@ export function cartLinesDiscountsGenerateRun(input) {
   const productDiscountCandidates = [];
   const orderDiscountCandidates = [];
 
-  // Exclude function
-  const isExcludedProduct = (line) => {
-    const tags = line.merchandise?.product?.hasTags || [];
-    return tags.some((t) => t.tag === "exclude" && t.hasTag === true);
-  };
-
   /* =========================================================
      🟣 Parse metafield campaigns
      ========================================================= */
@@ -136,7 +130,6 @@ export function cartLinesDiscountsGenerateRun(input) {
           case "product": {
             const productQtyMap = {};
             input.cart.lines.forEach((line) => {
-              if (isExcludedProduct(line)) return;
               const pid = line.merchandise?.id;
               if (!pid) return;
               productQtyMap[pid] =
@@ -150,9 +143,7 @@ export function cartLinesDiscountsGenerateRun(input) {
 
           case "collection": {
             let totalQtyInCollection = 0;
-
             input.cart.lines.forEach((line) => {
-              if (isExcludedProduct(line)) return;
               if (isInCollection(line, buyCollectionIds)) {
                 totalQtyInCollection += line.quantity ?? 1;
               }
@@ -165,9 +156,6 @@ export function cartLinesDiscountsGenerateRun(input) {
             let totalSpend = 0;
             input.cart.lines.forEach((line) => {
               // ✅ count spend only from products that belong to this campaign’s collections
-
-              if (isExcludedProduct(line)) return;
-
               if (isInCollection(line, buyCollectionIds)) {
                 totalSpend +=
                   parseFloat(line.cost.amountPerQuantity.amount) *
@@ -192,8 +180,6 @@ export function cartLinesDiscountsGenerateRun(input) {
 
             // 🧮 Count only *real* purchased items (exclude gifts, zero cost, or invalid lines)
             const totalQty = input.cart.lines.reduce((sum, line) => {
-              if (isExcludedProduct(line)) return sum;
-
               const qty = Number(line.quantity) || 0;
               const pid = line.merchandise?.id || "";
               const price = parseFloat(
@@ -236,7 +222,6 @@ export function cartLinesDiscountsGenerateRun(input) {
           let discountedCount = 0;
 
           for (const line of input.cart.lines) {
-            if (isExcludedProduct(line)) continue;
             const pid = line.merchandise?.id;
 
             const isGift =

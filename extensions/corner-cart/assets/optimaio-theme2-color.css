@@ -1,0 +1,44 @@
+  /* =====================================================
+    OPTIMAIO CART DRAWER - THEME: COOL
+    (Blue-accented modern theme)
+  ===================================================== */
+
+  body[data-optimaio-theme="theme2"] {
+    /* ---------- Base Colors ---------- */
+    --bg-primary: #f4f8ff;           /* soft blue-tinted background */
+    --bg-secondary: #ffffff;
+    --bg-soft: #e0edff;
+    --summary-bg: #ffffff;
+
+
+    --border: #dce6f8;
+    --shadow: 0 4px 12px rgba(0,0,0,0.2);
+
+    /* ---------- Text Colors ---------- */
+    --text-primary: #1a1d29;
+    --text-secondary: Red;
+    --text-muted: #5a6886;
+
+    /* ---------- Buttons ---------- */
+  
+
+    /* ---------- Accents ---------- */
+    --accent: #3b82f6;        /* lighter blue accent for active states */
+    --accent-soft: #2563eb;              /* vibrant blue */
+    --accent-contrast: #ffffff;
+    /* ---------- Alerts / Progress ---------- */
+    /* --alert-bg: #e9f2ff;
+    --alert-text: #1e40af;          */
+    --progress-inactive: #cbd5e1;
+
+    /* ---------- Discounts ---------- */
+ 
+    --discount-text: #1e3a8a;
+
+    /* ---------- Spinner ---------- */
+    --spinner-color: #2563eb;
+  }
+  /* Progress fill – default (solid) */
+  .optimaio-progress-fill {
+    background: var(--accent);
+  }
