@@ -22,6 +22,7 @@ import {
   MinusIcon,
 } from "@shopify/polaris-icons";
 import { useState, useCallback } from "react";
+import CampaignProductSelector from "../resourcePicker/CampaignProductSelector";
 
 export default function TieredGoalCard({
   goal,
@@ -99,17 +100,17 @@ export default function TieredGoalCard({
               {/* Add product button */}
               {!goal.products?.length > 0 ? (
                 <Box maxWidth="240px" width="100%">
-                  <Button
-                    variant="primary"
-                    size="slim"
-                    onClick={() => {
-                      setCurrentGoal(goal.id);
-                      setPickerType("get");
-                      setPickerOpen(true);
-                    }}
-                  >
-                    Add a product
-                  </Button>
+                  <CampaignProductSelector
+                    label="Add product"
+                    initialSelected={goal.products}
+                    onSelect={(variants) =>
+                      setGoals((prev) =>
+                        prev.map((g) =>
+                          g.id === goal.id ? { ...g, products: variants } : g,
+                        ),
+                      )
+                    }
+                  />
                 </Box>
               ) : (
                 ""
@@ -140,7 +141,8 @@ export default function TieredGoalCard({
                         />
 
                         <Box minWidth="0">
-                          <Text as="span">{v.productTitle || v.title}</Text>
+                          <Text as="span">{v.productTitle || v.title}</Text> -{" "}
+                          <Text as="span">{v.title}</Text>
                         </Box>
                       </InlineStack>,
 
@@ -166,19 +168,20 @@ export default function TieredGoalCard({
                       />,
                     ])}
                     footerContent={
-                      <Button
-                        variant="tertiary"
-                        size="slim"
-                        fullWidth
-                        icon={<Icon source={PlusIcon} />}
-                        onClick={() => {
-                          setCurrentGoal(goal.id);
-                          setPickerType("get");
-                          setPickerOpen(true);
-                        }}
-                      >
-                        Add more to the list
-                      </Button>
+                      <CampaignProductSelector
+                        label="Add more products to list"
+                        isTableButton
+                        initialSelected={goal.products}
+                        onSelect={(variants) =>
+                          setGoals((prev) =>
+                            prev.map((g) =>
+                              g.id === goal.id
+                                ? { ...g, products: variants }
+                                : g,
+                            ),
+                          )
+                        }
+                      />
                     }
                   />
                 </Card>

@@ -4,13 +4,11 @@ import {
   BlockStack,
   Card,
   Select,
-  Text,
   Button,
   InlineStack,
   DataTable,
   TextField,
   Banner,
-  Icon,
 } from "@shopify/polaris";
 import HelpHeader from "./HelpHeader";
 import ProductPickerModal from "./resourcePicker/ProductPickerModal";
@@ -236,7 +234,7 @@ export default function UpsellProductSettings({
               <Box paddingBlockStart="400">
                 <Card padding="0">
                   <DataTable
-                    columnContentTypes={["text", "text"]}
+                    columnContentTypes={["text", "text", "text"]}
                     headings={[]}
                     rows={rows}
                     pagination={{

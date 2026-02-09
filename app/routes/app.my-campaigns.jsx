@@ -20,6 +20,8 @@ import {
   Collapsible,
   Banner,
   InlineGrid,
+  DataTable,
+  Thumbnail,
 } from "@shopify/polaris";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { authenticate } from "../shopify.server";
@@ -48,6 +50,8 @@ import {
 import CampaignGoal from "./components/campaignEdit/CampaignGoal";
 import TieredGoalCard from "./components/campaignEdit/TieredGoalCard";
 import { useNavigate } from "@remix-run/react";
+import CampaignProductSelector from "./components/resourcePicker/CampaignProductSelector";
+import CampaignCollectionSelector from "./components/resourcePicker/CampaignCollectionSelector";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -738,17 +742,19 @@ export default function CampaignIndexTable() {
           )}
           {bxgyGoal.bxgyMode === "product" && (
             <>
-              <Button
-                primary
-                onClick={() => {
-                  setPickerType("buy");
-                  setPickerOpen(true);
-                  setCurrentGoal(bxgyGoal.id);
-                }}
-                style={{ marginTop: "0.75rem" }}
-              >
-                Select Buy Products
-              </Button>
+              <CampaignProductSelector
+                label="Select Buy Products"
+                initialSelected={bxgyGoal.buyProducts || []}
+                onSelect={(variants) =>
+                  setGoals((prev) => [
+                    {
+                      ...prev[0],
+                      buyProducts: variants,
+                    },
+                  ])
+                }
+              />
+
               {bxgyErrors.buyProducts && (
                 <Text tone="critical" variant="bodySm">
                   {bxgyErrors.buyProducts}
@@ -817,7 +823,7 @@ export default function CampaignIndexTable() {
           )}
 
           {bxgyGoal.bxgyMode === "spend_any_collection" && (
-            <div style={{ marginTop: "1.5rem" }}>
+            <BlockStack gap={200}>
               <Text variant="headingSm" fontWeight="bold">
                 Spend X on Any Collection
               </Text>
@@ -835,17 +841,22 @@ export default function CampaignIndexTable() {
               />
 
               {/* Select collections */}
-              <Button
-                primary
-                onClick={() => {
-                  setPickerType("collection");
-                  setPickerOpen(true);
-                  setCurrentGoal(bxgyGoal.id);
-                }}
-                style={{ marginTop: "0.75rem" }}
-              >
-                Select Eligible Collections
-              </Button>
+
+              <Box maxWidth="200px" width="100%">
+                <CampaignCollectionSelector
+                  label="Select Collections"
+                  initialSelected={bxgyGoal.buyCollections || []}
+                  onSelect={(collections) =>
+                    setGoals((prev) => [
+                      {
+                        ...prev[0],
+                        buyCollections: collections,
+                      },
+                    ])
+                  }
+                />
+              </Box>
+
               {bxgyErrors.buyCollections && (
                 <Text tone="critical" variant="bodySm">
                   {bxgyErrors.buyCollections}
@@ -853,75 +864,72 @@ export default function CampaignIndexTable() {
               )}
 
               {(bxgyGoal.buyCollections || []).length > 0 && (
-                <div style={{ marginTop: "0.75rem" }}>
-                  {(bxgyGoal.buyCollections || []).map((c) => (
-                    <div
-                      key={c.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        border: "1px solid #eee",
-                        borderRadius: "6px",
-                        padding: "8px 12px",
-                        marginBottom: "0.5rem",
-                        background: "#fff",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <img
-                          src={c.image?.url || c.image?.src || ""}
+                <Card padding="0">
+                  <DataTable
+                    columnContentTypes={["text", "text"]}
+                    headings={[]}
+                    rows={bxgyGoal.buyCollections.map((c) => [
+                      // Collection column
+                      <InlineStack gap="200" blockAlign="center" wrap={false}>
+                        <Thumbnail
+                          source={c.image?.url || ""}
                           alt={c.title}
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "4px",
-                            objectFit: "cover",
-                          }}
+                          size="small"
                         />
-                        <Text>{c.title}</Text>
-                      </div>
-                      <Button
-                        plain
-                        destructive
-                        icon={<Icon source={DeleteIcon} />}
-                        onClick={() =>
-                          setGoals([
-                            {
-                              ...bxgyGoal,
-                              buyCollections: bxgyGoal.buyCollections.filter(
-                                (col) => col.id !== c.id,
-                              ),
-                            },
-                          ])
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
+                        <Box minWidth="0">
+                          <Text as="span">{c.title}</Text>
+                        </Box>
+                      </InlineStack>,
+
+                      // Action column
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="flex-end"
+                        padding={100}
+                      >
+                        <InlineStack align="end" blockAlign="center">
+                          <Button
+                            plain
+                            destructive
+                            icon={DeleteIcon}
+                            onClick={() =>
+                              setGoals((prev) => [
+                                {
+                                  ...prev[0],
+                                  buyCollections: prev[0].buyCollections.filter(
+                                    (col) => col.id !== c.id,
+                                  ),
+                                },
+                              ])
+                            }
+                          />
+                        </InlineStack>
+                      </Box>,
+                    ])}
+                  />
+                </Card>
               )}
-            </div>
+            </BlockStack>
           )}
 
           {bxgyGoal.bxgyMode === "collection" && (
-            <>
-              <Button
-                primary
-                onClick={() => {
-                  setPickerType("collection");
-                  setPickerOpen(true);
-                  setCurrentGoal(bxgyGoal.id);
-                }}
-                style={{ marginTop: "0.75rem" }}
-              >
-                Select Buy Collections
-              </Button>
+            <BlockStack gap={200}>
+              <Box>
+                <CampaignCollectionSelector
+                  label="Select Collections"
+                  initialSelected={bxgyGoal.buyCollections || []}
+                  onSelect={(collections) =>
+                    setGoals((prev) => [
+                      {
+                        ...prev[0],
+                        buyCollections: collections,
+                      },
+                    ])
+                  }
+                />
+              </Box>
+
               {bxgyErrors.buyCollections && (
                 <Text tone="critical" variant="bodySm">
                   {bxgyErrors.buyCollections}
@@ -929,61 +937,57 @@ export default function CampaignIndexTable() {
               )}
 
               {(bxgyGoal.buyCollections || []).length > 0 && (
-                <div style={{ marginTop: "0.75rem" }}>
-                  {(bxgyGoal.buyCollections || []).map((c) => (
-                    <div
-                      key={c.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        border: "1px solid #eee",
-                        borderRadius: "6px",
-                        padding: "8px 12px",
-                        marginBottom: "0.5rem",
-                        background: "#fff",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
+                <Card padding="0">
+                  <DataTable
+                    columnContentTypes={["text", "numeric"]}
+                    headings={[]}
+                    rows={bxgyGoal.buyCollections.map((c) => [
+                      // Collection column
+                      <InlineStack
+                        key={`collection-${c.id}`}
+                        gap="200"
+                        blockAlign="center"
+                        wrap={false}
                       >
-                        <img
-                          src={c.image?.url || c.image?.src || ""}
+                        <Thumbnail
+                          source={c.image?.url || c.image?.src || ""}
                           alt={c.title}
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "4px",
-                            objectFit: "cover",
-                          }}
+                          size="small"
                         />
-                        <Text>{c.title}</Text>
-                      </div>
+                        <Box minWidth="0">
+                          <Text as="span">{c.title}</Text>
+                        </Box>
+                      </InlineStack>,
 
-                      <Button
-                        plain
-                        destructive
-                        icon={<Icon source={DeleteIcon} />}
-                        onClick={() =>
-                          setGoals([
-                            {
-                              ...bxgyGoal,
-                              buyCollections: (
-                                bxgyGoal.buyCollections || []
-                              ).filter((col) => col.id !== c.id),
-                            },
-                          ])
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
+                      // Action column
+                      <Box
+                        key={`delete-${c.id}`}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="flex-end"
+                        padding={100}
+                      >
+                        <Button
+                          plain
+                          destructive
+                          icon={DeleteIcon}
+                          onClick={() =>
+                            setGoals([
+                              {
+                                ...bxgyGoal,
+                                buyCollections: bxgyGoal.buyCollections.filter(
+                                  (col) => col.id !== c.id,
+                                ),
+                              },
+                            ])
+                          }
+                        />
+                      </Box>,
+                    ])}
+                  />
+                </Card>
               )}
-            </>
+            </BlockStack>
           )}
 
           {bxgyGoal.bxgyMode === "all" && (
@@ -995,8 +999,10 @@ export default function CampaignIndexTable() {
 
         {/* ---------------- GET SECTION (Always visible) ---------------- */}
         {/* ---------------- GET SECTION (Always visible) ---------------- */}
-        <div style={{ marginTop: "1.5rem" }}>
-          <Divider borderColor="border" />
+        <BlockStack gap="200">
+          <Box paddingBlockStart="400">
+            <Divider />
+          </Box>
           <Text variant="headingSm" fontWeight="bold">
             Get Reward (Y)
           </Text>
@@ -1012,17 +1018,22 @@ export default function CampaignIndexTable() {
               error={bxgyErrors.getQty}
             />
           </div>
-          <Button
-            primary
-            onClick={() => {
-              setPickerType("get");
-              setPickerOpen(true);
-              setCurrentGoal(bxgyGoal.id);
-            }}
-            style={{ marginTop: "0.75rem" }}
-          >
-            Select Reward Products
-          </Button>
+
+          <box>
+            <CampaignProductSelector
+              label="Select Reward Products"
+              initialSelected={bxgyGoal.getProducts || []}
+              onSelect={(variants) =>
+                setGoals((prev) => [
+                  {
+                    ...prev[0],
+                    getProducts: variants,
+                  },
+                ])
+              }
+            />
+          </box>
+
           {bxgyErrors.getProducts && (
             <Text tone="critical" variant="bodySm">
               {bxgyErrors.getProducts}
@@ -1030,66 +1041,62 @@ export default function CampaignIndexTable() {
           )}
 
           {(bxgyGoal.getProducts || []).length > 0 && (
-            <div style={{ marginTop: "0.75rem" }}>
-              {(bxgyGoal.getProducts || []).map((p) => (
-                <div
-                  key={p.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    border: "1px solid #eee",
-                    borderRadius: "6px",
-                    padding: "8px 12px",
-                    marginBottom: "0.5rem",
-                    background: "#fff",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
+            <Card padding="0">
+              <DataTable
+                columnContentTypes={["text", "numeric"]}
+                headings={[]}
+                rows={bxgyGoal.getProducts.map((p) => [
+                  // Product column
+                  <InlineStack
+                    key={`product-${p.id}`}
+                    gap="200"
+                    blockAlign="center"
+                    wrap={false}
                   >
-                    <img
-                      src={p.image?.url || p.productImage?.url || ""}
+                    <Thumbnail
+                      source={p.image?.url || p.productImage?.url || ""}
                       alt={p.title}
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "4px",
-                        objectFit: "cover",
-                      }}
+                      size="small"
                     />
-                    <Text>
-                      {" "}
-                      {p.productTitle
-                        ? `${p.productTitle} - ${p.title}`
-                        : p.title}
-                    </Text>
-                  </div>
 
-                  <Button
-                    plain
-                    destructive
-                    icon={<Icon source={DeleteIcon} />}
-                    onClick={() =>
-                      setGoals([
-                        {
-                          ...bxgyGoal,
-                          getProducts: (bxgyGoal.getProducts || []).filter(
-                            (gp) => gp.id !== p.id,
-                          ),
-                        },
-                      ])
-                    }
-                  />
-                </div>
-              ))}
-            </div>
+                    <Box minWidth="0">
+                      <Text as="span">
+                        {p.productTitle
+                          ? `${p.productTitle} - ${p.title}`
+                          : p.title}
+                      </Text>
+                    </Box>
+                  </InlineStack>,
+
+                  // Action column (right aligned)
+                  <Box
+                    key={`delete-${p.id}`}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="flex-end"
+                    padding={100}
+                  >
+                    <Button
+                      plain
+                      destructive
+                      icon={DeleteIcon}
+                      onClick={() =>
+                        setGoals([
+                          {
+                            ...bxgyGoal,
+                            getProducts: (bxgyGoal.getProducts || []).filter(
+                              (gp) => gp.id !== p.id,
+                            ),
+                          },
+                        ])
+                      }
+                    />
+                  </Box>,
+                ])}
+              />
+            </Card>
           )}
-        </div>
+        </BlockStack>
 
         {/* ---------------- DISCOUNT SECTION ---------------- */}
         {/* ---------------- DISCOUNT SECTION ---------------- */}

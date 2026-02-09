@@ -9,6 +9,19 @@ export default function ProductPickerButton({
 }) {
   const shopify = useAppBridge();
 
+  // extract id and variant of the product for preselected products when picekr is opened
+  const buildSelectionIds = (products = []) =>
+    products.map((product) => ({
+      id: product.id,
+      ...(product.variants?.length
+        ? {
+            variants: product.variants.map((v) => ({
+              id: v.id,
+            })),
+          }
+        : {}),
+    }));
+
   const openPicker = async () => {
     const result = await shopify.resourcePicker({
       type: "product",
@@ -17,9 +30,8 @@ export default function ProductPickerButton({
         archived: false,
         variants: !isVariantSelectorOff,
       },
-      selectionIds: initialSelected.map((p) => ({
-        id: p.id,
-      })),
+      // ✅ THIS is the magic
+      selectionIds: buildSelectionIds(initialSelected),
     });
 
     const selected = result?.selectedResources || result?.selection;

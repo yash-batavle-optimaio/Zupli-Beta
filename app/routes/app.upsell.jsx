@@ -12,7 +12,11 @@ import {
   InlineStack,
   Thumbnail,
 } from "@shopify/polaris";
-import { ArrowLeftIcon, CircleLeftIcon } from "@shopify/polaris-icons";
+import {
+  ArrowLeftIcon,
+  CircleLeftIcon,
+  DeleteIcon,
+} from "@shopify/polaris-icons";
 import { useState, useEffect, useMemo } from "react";
 import { useLoaderData } from "@remix-run/react";
 import { SaveBar, useAppBridge } from "@shopify/app-bridge-react";
@@ -278,17 +282,40 @@ export default function Upsell() {
     (page + 1) * ITEMS_PER_PAGE,
   );
 
-  const rows = paginatedProducts.map((variant) => [
-    <Thumbnail
-      key={variant.id}
-      source={
-        variant.image?.url ||
-        "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png"
-      }
-      alt={variant.title}
-      size="small"
-    />,
-    `${variant.productTitle} `,
+  const handleDeleteProduct = (productId) => {
+    setSelectedProducts((prev) =>
+      prev.filter((product) => product.id !== productId),
+    );
+  };
+
+  const rows = paginatedProducts.map((product) => [
+    <InlineStack gap="200" blockAlign="center">
+      <Thumbnail
+        source={
+          product.image?.url ||
+          "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png"
+        }
+        alt={product.productTitle}
+        size="small"
+      />
+      <Text as="span">{product.productTitle}</Text>
+    </InlineStack>,
+
+    <InlineStack align="end">
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="flex-end"
+        padding={100}
+      >
+        <Button
+          plain
+          destructive
+          icon={DeleteIcon}
+          onClick={() => handleDeleteProduct(product.id)}
+        />
+      </Box>
+    </InlineStack>,
   ]);
 
   const handleDiscard = () => {
