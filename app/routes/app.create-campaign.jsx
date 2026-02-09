@@ -16,7 +16,7 @@ import { ArrowLeftIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import { useState, useCallback } from "react";
 import { useNavigate } from "@remix-run/react";
-import { requireBilling } from "./utils/requireBilling.server";
+// import { requireBilling } from "./utils/requireBilling.server";
 
 // Loader: makes sure the request is authenticated
 export const loader = async ({ request }) => {
