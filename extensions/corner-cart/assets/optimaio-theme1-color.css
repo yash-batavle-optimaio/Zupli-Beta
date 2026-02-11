@@ -2,7 +2,7 @@
    OPTIMAIO CART DRAWER - THEME: THEME1 (MINIMAL)
    Default soft pink & black theme
 ===================================================== */
-
+/* Rose Quartz */
 body[data-optimaio-theme="theme1"] {
   /* ---------- Base Colors ---------- */
   --bg-primary: #fff7f8;
@@ -39,7 +39,7 @@ body[data-optimaio-theme="theme1"] {
   --spinner-color: #999;
 }
 
-  /* Progress fill – default (solid) */
-  .optimaio-progress-fill {
-    background: var(--accent);
-  }
+/* Progress fill – default (solid) */
+.optimaio-progress-fill {
+  background: var(--accent);
+}

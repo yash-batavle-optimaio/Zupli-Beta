@@ -1,30 +1,31 @@
+/* Golden Hour Light */
 body[data-optimaio-theme="theme5"] {
-    --bg-primary:#FFFCF6;
-    --bg-secondary:#FFF6E6;
-    --bg-soft:#FCEBCB;
-    
-    --text-primary:#2A1B0F;
-    --text-secondary:#6B4E2E;
-    --text-muted:#9A7B59;
-    
-    --border:#F1DFC2;
-    --shadow:rgba(0,0,0,0.10);
-    
-    --accent:#B7791F;
-    --accent-soft:rgba(183,121,31,0.16);
-    --accent-contrast:#FFFFFF;
-    
-    /* --cta-bg:#B7791F;
+  --bg-primary: #fffcf6;
+  --bg-secondary: #fff6e6;
+  --bg-soft: #fcebcb;
+
+  --text-primary: #2a1b0f;
+  --text-secondary: #6b4e2e;
+  --text-muted: #9a7b59;
+
+  --border: #f1dfc2;
+  --shadow: rgba(0, 0, 0, 0.1);
+
+  --accent: #b7791f;
+  --accent-soft: rgba(183, 121, 31, 0.16);
+  --accent-contrast: #ffffff;
+
+  /* --cta-bg:#B7791F;
     --cta-text:#FFFFFF; */
-  
-    /* ---------- Progress ---------- */
-    --progress-inactive: #d6d6d6;
-  
-    /* ---------- Discounts ---------- */
-    --discount-text: #2f2f2f;
-  }
-  
-    /* Progress fill – default (solid) */
-    .optimaio-progress-fill {
-      background: var(--accent);
-    }
+
+  /* ---------- Progress ---------- */
+  --progress-inactive: #d6d6d6;
+
+  /* ---------- Discounts ---------- */
+  --discount-text: #2f2f2f;
+}
+
+/* Progress fill – default (solid) */
+.optimaio-progress-fill {
+  background: var(--accent);
+}

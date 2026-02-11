@@ -169,23 +169,6 @@ export default function CampaignIndexTable() {
         }
       }
 
-      if (g.type === "order_discount") {
-        const validTypes = ["percentage", "amount"];
-        if (!validTypes.includes(g.discountType)) {
-          errs.discountType = "Choose a discount type";
-        }
-        const v = Number(g.discountValue);
-        if (g.discountType === "percentage") {
-          if (!Number.isFinite(v) || v <= 0 || v > 100) {
-            errs.discountValue = "Enter % between 1 and 100";
-          }
-        } else if (g.discountType === "amount") {
-          if (!Number.isFinite(v) || v <= 0) {
-            errs.discountValue = "Enter an amount greater than 0";
-          }
-        }
-      }
-
       // free_shipping has no extra fields
 
       if (Object.keys(errs).length) perGoal[g.id] = errs;
@@ -254,26 +237,6 @@ export default function CampaignIndexTable() {
     if (!goal.getProducts?.length)
       errors.getProducts = "Select at least one reward product";
 
-    const validDiscountTypes = ["free_product", "percentage", "fixed"];
-    if (!validDiscountTypes.includes(goal.discountType)) {
-      errors.discountType = "Choose a valid discount type";
-    } else if (goal.discountType === "percentage") {
-      const v = Number(goal.discountValue);
-      if (!Number.isFinite(v) || v <= 0 || v > 100) {
-        errors.discountValue = "Enter a % between 1 and 100";
-      }
-    } else if (goal.discountType === "fixed") {
-      const v = Number(goal.discountValue);
-      if (!Number.isFinite(v) || v <= 0) {
-        errors.discountValue = "Enter a fixed amount greater than 0";
-      }
-    } else if (goal.discountType === "free_product") {
-      // Optional normalization (keeps UI consistent)
-      // If you want to enforce 100% for free, uncomment next two lines:
-      // if (goal.discountValue !== 100) {
-      //   errors.discountValue = "Free product implies 100% off";
-      // }
-    }
     return errors;
   };
 
@@ -458,23 +421,23 @@ export default function CampaignIndexTable() {
     };
 
     // 🧩 Validate campaign name
-    if (!campaignData.campaignName || campaignData.campaignName.length < 3) {
-      setNameError("Enter a campaign name (at least 3 characters).");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    } else {
-      setNameError("");
-    }
-
     if (campaignData.campaignType === "bxgy") {
       const errors = validateBxgy(goals[0]);
+
       if (Object.keys(errors).length > 0) {
         setBxgyErrors(errors);
         window.scrollTo({ top: 0, behavior: "smooth" });
-        return; // stop save
-      } else {
-        setBxgyErrors({});
+        return;
       }
+
+      setBxgyErrors({});
+
+      // 🔒 FORCE FREE PRODUCT AFTER VALIDATION
+      campaignData.goals = campaignData.goals.map((g) => ({
+        ...g,
+        discountType: "free_product",
+        discountValue: 100,
+      }));
     } else {
       // ✅ Tiered validation
       const { perGoal, general } = validateTiered(goals, selected);
@@ -630,8 +593,17 @@ export default function CampaignIndexTable() {
       getQty: 1,
       getProducts: [],
       discountType: "free_product",
-      discountValue: 10,
+      discountValue: 100,
     };
+
+    // 🔒 FORCE BXGY TO ALWAYS BE FREE PRODUCT
+    if (
+      bxgyGoal.discountType !== "free_product" ||
+      bxgyGoal.discountValue !== 100
+    ) {
+      bxgyGoal.discountType = "free_product";
+      bxgyGoal.discountValue = 100;
+    }
 
     if (!goals[0]) setGoals([bxgyGoal]);
 
@@ -1099,87 +1071,21 @@ export default function CampaignIndexTable() {
         </BlockStack>
 
         {/* ---------------- DISCOUNT SECTION ---------------- */}
-        {/* ---------------- DISCOUNT SECTION ---------------- */}
-        <div style={{ marginTop: "1.5rem" }}>
-          <Text fontWeight="bold">Discount Type</Text>
 
-          <ButtonGroup segmented>
-            {/* 🥇 Free Product First */}
-            <Button
-              pressed={bxgyGoal.discountType === "free_product"}
-              onClick={() =>
-                setGoals([
-                  {
-                    ...bxgyGoal,
-                    discountType: "free_product",
-                    discountValue: 100,
-                  },
-                ])
-              }
-            >
-              Free Product (100% Off)
-            </Button>
-
-            <Button
-              pressed={bxgyGoal.discountType === "percentage"}
-              onClick={() =>
-                setGoals([
-                  {
-                    ...bxgyGoal,
-                    discountType: "percentage",
-                    discountValue: 10,
-                  },
-                ])
-              }
-            >
-              Percentage
-            </Button>
-
-            <Button
-              pressed={bxgyGoal.discountType === "fixed"}
-              onClick={() =>
-                setGoals([
-                  { ...bxgyGoal, discountType: "fixed", discountValue: 100 },
-                ])
-              }
-            >
-              Fixed Amount
-            </Button>
-          </ButtonGroup>
-
-          {/* Hide field if "Free Product" is selected */}
-          {bxgyGoal.discountType !== "free_product" && (
-            <Box paddingBlockStart="400">
-              <TextField
-                label="Discount Value"
-                prefix={
-                  bxgyGoal.discountType === "fixed" ? defaultCurrency : "%"
-                }
-                type="number"
-                value={bxgyGoal.discountValue || ""}
-                onChange={(val) =>
-                  setGoals([{ ...bxgyGoal, discountValue: Number(val) }])
-                }
-                error={bxgyErrors.discountValue}
-              />
-            </Box>
-          )}
-
-          {/* Friendly note when Free Product is active */}
-          {bxgyGoal.discountType === "free_product" && (
-            <Box
-              padding="400"
-              background="bg-subdued"
-              borderRadius="200"
-              marginTop="400"
-            >
-              <Text tone="subdued">
-                🎁 All selected reward products will be completely free for the
-                customer.
-              </Text>
-            </Box>
-          )}
-        </div>
+        {/* Friendly note when Free Product is active */}
+        {bxgyGoal.discountType === "free_product" && (
+          <Box
+            padding="400"
+            background="bg-subdued"
+            borderRadius="200"
+            marginTop="400"
+          >
+            <Text tone="subdued">
+              🎁 All selected reward products will be completely free for the
+              customer.
+            </Text>
+          </Box>
+        )}
 
         {/* ---------------- MODALS ---------------- */}
         {pickerType === "collection" ? (

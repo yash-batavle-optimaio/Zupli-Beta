@@ -59,7 +59,6 @@ export function cartLinesDiscountsGenerateRun(input) {
     const discountedLineIds = new Set();
     const lockedBuyProducts = new Set();
     const lockedCollections = new Set();
-    const lockedGifts = new Set();
 
     // Helper to match cart lines by collection
     const isInCollection = (line, collectionIds = []) => {
@@ -136,12 +135,19 @@ export function cartLinesDiscountsGenerateRun(input) {
                 (productQtyMap[pid] || 0) + (line.quantity ?? 1);
             });
             conditionMet = buyProductIds.every(
-              (pid) => (productQtyMap[pid] || 0) >= buyQty,
+              (pid) =>
+                !lockedBuyProducts.has(pid) &&
+                (productQtyMap[pid] || 0) >= buyQty,
             );
             break;
           }
 
           case "collection": {
+            // 🔒 Block reuse of collection by lower-priority campaigns
+            if (buyCollectionIds.some((cid) => lockedCollections.has(cid))) {
+              conditionMet = false;
+              break;
+            }
             let totalQtyInCollection = 0;
             input.cart.lines.forEach((line) => {
               if (isInCollection(line, buyCollectionIds)) {
@@ -231,10 +237,19 @@ export function cartLinesDiscountsGenerateRun(input) {
             if (
               getProductIds.includes(pid) &&
               isGift &&
-              !lockedGifts.has(pid) &&
               discountedCount < getQtyLimit &&
               !discountedLineIds.has(line.id)
             ) {
+              // 🔢 Handle quantity-aware gift discounting
+              const lineQty = line.quantity ?? 1;
+              const remaining = getQtyLimit - discountedCount;
+
+              // Nothing left to discount
+              if (remaining <= 0) continue;
+
+              // Shopify applies discount per-line, so we cap logically
+              const applyQty = Math.min(lineQty, remaining);
+
               let discountValueObj = null;
               let message = "";
 
@@ -262,7 +277,7 @@ export function cartLinesDiscountsGenerateRun(input) {
               });
 
               discountedLineIds.add(line.id);
-              lockedGifts.add(pid);
+
               discountedCount++;
             }
           }

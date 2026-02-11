@@ -1,3 +1,5 @@
+/* Bubblegum Light */
+
 body[data-optimaio-theme="theme3"] {
   /* ---------- Base Colors ---------- */
   --bg-primary: #fff7fa;
@@ -11,13 +13,12 @@ body[data-optimaio-theme="theme3"] {
 
   /* ---------- Borders & Shadow ---------- */
   --border: #f3c1d3;
-  --shadow: rgba(0,0,0,0.10);
+  --shadow: rgba(0, 0, 0, 0.1);
 
   /* ---------- Accents ---------- */
   --accent: #e11d48;
-  --accent-soft: rgba(225,29,72,0.14);
+  --accent-soft: rgba(225, 29, 72, 0.14);
   --accent-contrast: #ffffff;
-
 
   /* ---------- Progress ---------- */
   --progress-inactive: #f1b6cb;
@@ -26,7 +27,7 @@ body[data-optimaio-theme="theme3"] {
   --discount-text: #9f1239;
 }
 
-  /* Progress fill – default (solid) */
-  .optimaio-progress-fill {
-    background: var(--accent);
-  }
+/* Progress fill – default (solid) */
+.optimaio-progress-fill {
+  background: var(--accent);
+}
