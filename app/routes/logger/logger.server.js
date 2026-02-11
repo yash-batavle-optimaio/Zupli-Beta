@@ -2,7 +2,7 @@ import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 import { getContext } from "./requestContext.server";
 
-const isProd = process.env.NODE_ENV === "dev";
+const isProd = process.env.NODE_ENV === "production";
 
 const transports = [];
 
