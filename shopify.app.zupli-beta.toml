@@ -1,12 +1,9 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "cdf63c69b617cd8b34e1ccc4c8fe7027"
-name = "Zupli"
-application_url = "https://remix-app-rqyv.onrender.com/"
+client_id = "5e23774dc6779e0a76c2eed92c98a9f2"
+name = "Zupli-Beta"
+application_url = "https://zupli-beta.onrender.com/"
 embedded = true
-
-[build]
-automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2026-01"
@@ -38,12 +35,12 @@ scopes = "read_content,read_customers,read_discounts,read_markets,read_orders,re
 
 [auth]
 redirect_urls = [
-  "https://remix-app-rqyv.onrender.com/auth",
-  "https://remix-app-rqyv.onrender.com/auth/login",
-  "https://remix-app-rqyv.onrender.com/auth/callback"
+  "https://zupli-beta.onrender.com/auth",
+  "https://zupli-beta.onrender.com/auth/login",
+  "https://zupli-beta.onrender.com/auth/callback"
 ]
 
 [app_proxy]
-url = "https://remix-app-rqyv.onrender.com/optimaio-cart"
+url = "https://zupli-beta.onrender.com/optimaio-cart"
 subpath = "optimaio-cart"
 prefix = "apps"

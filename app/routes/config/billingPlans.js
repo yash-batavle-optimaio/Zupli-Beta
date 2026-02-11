@@ -13,7 +13,7 @@ export const TRIAL_DAYS = 15;
 // initial  susbcription config (used in subscription creation subscription.server.js)
 export const SUBSCRIPTION_CONFIG = {
   isTestMode: true,
-  cappedAmount: 100000,
+  cappedAmount: 75,
   currencyCode: "USD",
   intervalDays: "EVERY_30_DAYS",
 };
@@ -69,7 +69,6 @@ export const BILLING_PLANS = {
     orderThreshold: 7000,
   },
 };
-
 
 // initial base amount at webhook creation (used in webhooks.app.create_subscription.jsx)
 export function getBaseUsageAmount() {
