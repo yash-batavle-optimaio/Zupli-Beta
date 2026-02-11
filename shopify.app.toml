@@ -2,7 +2,7 @@
 
 client_id = "5e23774dc6779e0a76c2eed92c98a9f2"
 name = "Zupli-Beta"
-application_url = "https://zupli-beta.onrender.com/"
+application_url = "https://dgtzupli.onrender.com/"
 embedded = true
 
 [webhooks]
@@ -35,12 +35,15 @@ scopes = "read_content,read_customers,read_discounts,read_markets,read_orders,re
 
 [auth]
 redirect_urls = [
-  "https://zupli-beta.onrender.com/auth",
-  "https://zupli-beta.onrender.com/auth/login",
-  "https://zupli-beta.onrender.com/auth/callback"
+  "https://dgtzupli.onrender.com/auth",
+  "https://dgtzupli.onrender.com/auth/login",
+  "https://dgtzupli.onrender.com/auth/callback"
 ]
 
 [app_proxy]
-url = "https://zupli-beta.onrender.com/optimaio-cart"
+url = "https://dgtzupli.onrender.com/optimaio-cart"
 subpath = "optimaio-cart"
 prefix = "apps"
+
+[build]
+automatically_update_urls_on_dev = true
