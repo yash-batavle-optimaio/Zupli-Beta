@@ -4,15 +4,12 @@ import { getContext } from "./requestContext.server";
 
 const isProd = process.env.NODE_ENV === "production";
 
-const transports = [];
-
-if (!isProd && process.env.ENABLE_CONSOLE_LOGS === "true") {
-  transports.push(
-    new winston.transports.Console({
-      level: process.env.LOG_LEVEL || "info",
-    }),
-  );
-}
+const transports = [
+  // Render / Cloud logs
+  new winston.transports.Console({
+    level: process.env.LOG_LEVEL || "info",
+  }),
+];
 
 // ⛔ DO NOT use file logs in production on Render
 if (!isProd) {
