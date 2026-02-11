@@ -1,16 +1,13 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "5e23774dc6779e0a76c2eed92c98a9f2"
-name = "Zupli-Beta"
+client_id = "0ced6b7e10676b6120300d320274e94f"
+name = "zupli-beta1.0"
 application_url = "https://zupli-beta.onrender.com/"
 embedded = true
 
 [webhooks]
 api_version = "2026-01"
 
-  [[webhooks.subscriptions]]
-  topics = [ "orders/create" ]
-  uri = "/webhooks/app/order_create"
 
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
@@ -31,7 +28,7 @@ api_version = "2026-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_content,read_customers,read_discounts,read_markets,read_orders,read_products,write_app_proxy,write_cart_transforms,write_discounts,write_orders,write_products"
+scopes = "read_content,read_discounts,read_markets,read_orders,read_products,write_app_proxy,write_cart_transforms,write_discounts,write_orders,write_products"
 
 [auth]
 redirect_urls = [
