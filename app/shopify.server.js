@@ -24,8 +24,8 @@ const shopify = shopifyApp({
       console.log("App installed for:", session.shop);
       // ✅ Save store info on install / reinstall
       await upsertStoreInfo(session.shop);
-      await ensureBxgyDiscountExists(admin, session.shop);
-      await ensureTieredDiscountExists(admin, session.shop);
+      // await ensureBxgyDiscountExists(admin, session.shop);
+      // await ensureTieredDiscountExists(admin, session.shop);
     },
   },
   distribution: AppDistribution.AppStore,
