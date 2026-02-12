@@ -1,9 +1,12 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "5e23774dc6779e0a76c2eed92c98a9f2"
-name = "Zupli-Beta"
+client_id = "bfd662ff8ca8df0f0c64012fff39aa12"
+name = "Zupli-v1"
 application_url = "https://dgtzupli.onrender.com/"
 embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2026-01"
@@ -44,6 +47,3 @@ redirect_urls = [
 url = "https://dgtzupli.onrender.com/optimaio-cart"
 subpath = "optimaio-cart"
 prefix = "apps"
-
-[build]
-automatically_update_urls_on_dev = true
